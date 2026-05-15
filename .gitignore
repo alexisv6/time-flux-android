@@ -1,0 +1,17 @@
+.gradle/
+.idea/
+.kotlin/
+build/
+*.iml
+local.properties
+*.keystore
+*.jks
+
+# KMP iOS build artifacts
+iosApp/.build/
+iosApp/Pods/
+iosApp/DerivedData/
+*.xcworkspace
+
+# SQLDelight generated code
+**/generated/

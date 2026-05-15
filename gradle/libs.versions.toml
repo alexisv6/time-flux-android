@@ -1,0 +1,80 @@
+[versions]
+kotlin                  = "2.1.0"
+agp                     = "8.7.3"
+coroutines              = "1.9.0"
+serialization           = "1.7.3"
+datetime                = "0.6.1"
+ktor                    = "3.0.3"
+sqldelight              = "2.0.2"
+koin                    = "4.0.0"
+lifecycle               = "2.8.7"
+androidx-lifecycle      = "2.8.7"
+multiplatform-settings  = "1.2.0"
+kermit                  = "2.0.4"
+skie                    = "0.9.5"
+
+# Android
+compose-bom             = "2024.12.01"
+activity-compose        = "1.9.3"
+core-ktx                = "1.15.0"
+androidx-sqlite         = "2.5.0"
+
+[plugins]
+kotlin-multiplatform    = { id = "org.jetbrains.kotlin.multiplatform",      version.ref = "kotlin" }
+kotlin-serialization    = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose          = { id = "org.jetbrains.kotlin.plugin.compose",     version.ref = "kotlin" }
+android-application     = { id = "com.android.application",                 version.ref = "agp" }
+android-library         = { id = "com.android.library",                     version.ref = "agp" }
+sqldelight              = { id = "app.cash.sqldelight",                      version.ref = "sqldelight" }
+skie                    = { id = "co.touchlab.skie",                         version.ref = "skie" }
+
+[libraries]
+# Kotlin
+kotlinx-coroutines-core     = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core",    version.ref = "coroutines" }
+kotlinx-serialization-json  = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-datetime            = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",           version.ref = "datetime" }
+
+# SQLDelight
+sqldelight-runtime          = { group = "app.cash.sqldelight", name = "runtime",                      version.ref = "sqldelight" }
+sqldelight-coroutines       = { group = "app.cash.sqldelight", name = "coroutines-extensions",        version.ref = "sqldelight" }
+sqldelight-android-driver   = { group = "app.cash.sqldelight", name = "android-driver",               version.ref = "sqldelight" }
+sqldelight-native-driver    = { group = "app.cash.sqldelight", name = "native-driver",                version.ref = "sqldelight" }
+sqldelight-sqlite-driver    = { group = "app.cash.sqldelight", name = "sqlite-driver",                version.ref = "sqldelight" }
+
+# AndroidX SQLite (BundledSQLiteDriver for FTS5 + window functions)
+androidx-sqlite-bundled     = { group = "androidx.sqlite", name = "sqlite-bundled",                   version.ref = "androidx-sqlite" }
+
+# Koin
+koin-core                   = { group = "io.insert-koin", name = "koin-core",                         version.ref = "koin" }
+koin-android                = { group = "io.insert-koin", name = "koin-android",                      version.ref = "koin" }
+koin-compose                = { group = "io.insert-koin", name = "koin-androidx-compose",             version.ref = "koin" }
+
+# Lifecycle / ViewModel (AndroidX — used in androidMain + androidApp)
+lifecycle-viewmodel         = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx",     version.ref = "androidx-lifecycle" }
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+lifecycle-runtime-compose   = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose",   version.ref = "androidx-lifecycle" }
+
+# Ktor (for future network/sync use)
+ktor-client-core            = { group = "io.ktor", name = "ktor-client-core",       version.ref = "ktor" }
+ktor-client-okhttp          = { group = "io.ktor", name = "ktor-client-okhttp",     version.ref = "ktor" }
+ktor-client-darwin          = { group = "io.ktor", name = "ktor-client-darwin",     version.ref = "ktor" }
+ktor-serialization-json     = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-content-negotiation    = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+
+# Multiplatform Settings
+multiplatform-settings      = { group = "com.russhwolf", name = "multiplatform-settings",             version.ref = "multiplatform-settings" }
+multiplatform-settings-coroutines = { group = "com.russhwolf", name = "multiplatform-settings-coroutines", version.ref = "multiplatform-settings" }
+
+# Kermit Logging
+kermit                      = { group = "co.touchlab", name = "kermit",                               version.ref = "kermit" }
+
+# Android UI
+compose-bom                 = { group = "androidx.compose", name = "compose-bom",                    version.ref = "compose-bom" }
+compose-ui                  = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-tooling          = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview  = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material3           = { group = "androidx.compose.material3", name = "material3" }
+compose-foundation          = { group = "androidx.compose.foundation", name = "foundation" }
+compose-icons-core          = { group = "androidx.compose.material", name = "material-icons-core" }
+activity-compose            = { group = "androidx.activity", name = "activity-compose",              version.ref = "activity-compose" }
+core-ktx                    = { group = "androidx.core", name = "core-ktx",                          version.ref = "core-ktx" }

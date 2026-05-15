@@ -1,0 +1,328 @@
+-- ============================================================
+-- TIMELINE ENTRIES  (core table — every module writes here)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS timeline_entries (
+    id              TEXT    NOT NULL PRIMARY KEY,   -- ULID (client-generated, time-ordered)
+    created_at      INTEGER NOT NULL,               -- Unix epoch milliseconds UTC
+    ends_at         INTEGER,                        -- NULL = point-in-time; set = duration span
+    module_type     TEXT    NOT NULL,               -- ModuleType.id string
+    title           TEXT,
+    note            TEXT,                           -- short summary always shown on timeline
+    media_uri       TEXT,
+    location_lat    REAL,
+    location_lng    REAL,
+    location_name   TEXT,
+    is_pinned       INTEGER NOT NULL DEFAULT 0,
+    payload         TEXT    NOT NULL DEFAULT '{}',  -- JSON blob for module-specific fields
+    deleted_at      INTEGER,                        -- soft delete; NULL = active
+    updated_at      INTEGER NOT NULL,
+    -- Computed by repository on insert from created_at; enables index-sargable time queries
+    month_day       TEXT    NOT NULL DEFAULT '',    -- 'MM-DD'
+    year_month      TEXT    NOT NULL DEFAULT '',    -- 'YYYY-MM'
+    year_week       TEXT    NOT NULL DEFAULT ''     -- 'YYYY-WW'
+);
+
+-- Core indexes
+CREATE INDEX IF NOT EXISTS idx_created_at      ON timeline_entries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_module_created  ON timeline_entries(module_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_month_day       ON timeline_entries(month_day);
+CREATE INDEX IF NOT EXISTS idx_year_month      ON timeline_entries(year_month);
+CREATE INDEX IF NOT EXISTS idx_year_week       ON timeline_entries(year_week);
+CREATE INDEX IF NOT EXISTS idx_updated_at      ON timeline_entries(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_deleted_at      ON timeline_entries(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media           ON timeline_entries(media_uri) WHERE media_uri IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ends_at         ON timeline_entries(ends_at) WHERE ends_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_pinned          ON timeline_entries(is_pinned) WHERE is_pinned = 1;
+
+
+-- ============================================================
+-- TAGS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tags (
+    id   INTEGER NOT NULL PRIMARY KEY,
+    name TEXT    NOT NULL UNIQUE COLLATE NOCASE
+);
+
+CREATE TABLE IF NOT EXISTS entry_tags (
+    entry_id TEXT    NOT NULL REFERENCES timeline_entries(id) ON DELETE CASCADE,
+    tag_id   INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (entry_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_entry_tags_tag   ON entry_tags(tag_id, entry_id);
+CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags(entry_id, tag_id);
+
+
+-- ============================================================
+-- MEDIA ATTACHMENTS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS media_attachments (
+    id              TEXT    NOT NULL PRIMARY KEY,   -- ULID
+    entry_id        TEXT    NOT NULL REFERENCES timeline_entries(id) ON DELETE CASCADE,
+    file_path       TEXT    NOT NULL,               -- relative path in app private directory
+    thumbnail_path  TEXT    NOT NULL,
+    width           INTEGER NOT NULL,
+    height          INTEGER NOT NULL,
+    file_size_bytes INTEGER NOT NULL,
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    created_at      INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_entry ON media_attachments(entry_id);
+
+
+-- ============================================================
+-- AGGREGATION / SUMMARY TABLES  (maintained by app on write)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS daily_summaries (
+    date            TEXT    NOT NULL PRIMARY KEY,   -- 'YYYY-MM-DD'
+    entry_count     INTEGER NOT NULL DEFAULT 0,
+    mood_avg        REAL,
+    sleep_hours     REAL,
+    has_journal     INTEGER NOT NULL DEFAULT 0,
+    has_milestone   INTEGER NOT NULL DEFAULT 0,
+    updated_at      INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS monthly_summaries (
+    year_month      TEXT    NOT NULL PRIMARY KEY,   -- 'YYYY-MM'
+    entry_count     INTEGER NOT NULL DEFAULT 0,
+    mood_avg        REAL,
+    sleep_hours     REAL,
+    habit_rate      REAL,
+    updated_at      INTEGER NOT NULL
+);
+
+
+-- ============================================================
+-- FULL-TEXT SEARCH  (FTS5)
+-- ============================================================
+
+CREATE VIRTUAL TABLE IF NOT EXISTS entry_fts USING fts5(
+    entry_id    UNINDEXED,
+    title,
+    note,
+    body,           -- journal entry body text (empty for non-journal entries)
+    tokenize = 'unicode61 remove_diacritics 1'
+);
+
+-- FTS sync triggers are created via raw SQL in DriverFactory (onCreate callback)
+-- because SQLDelight's parser does not support the FTS5 special content-delete syntax:
+--   INSERT INTO entry_fts(entry_fts, row) VALUES ('delete', rowid)
+
+
+-- ============================================================
+-- QUERIES — TIMELINE
+-- ============================================================
+
+-- Cursor-paginated scroll (backward — load older)
+selectPageBefore:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND (created_at < :before_ts OR (created_at = :before_ts AND id < :before_id))
+ORDER BY created_at DESC, id DESC
+LIMIT :limit;
+
+-- Cursor-paginated scroll (forward — load newer)
+selectPageAfter:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND (created_at > :after_ts OR (created_at = :after_ts AND id > :after_id))
+ORDER BY created_at ASC, id ASC
+LIMIT :limit;
+
+-- Filter by module type with cursor
+selectPageByModule:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND module_type = :module_type
+  AND (created_at < :before_ts OR (created_at = :before_ts AND id < :before_id))
+ORDER BY created_at DESC, id DESC
+LIMIT :limit;
+
+-- On This Day
+selectOnThisDay:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND month_day = :month_day
+ORDER BY created_at DESC;
+
+-- Week summary for week view
+selectWeekSummary:
+SELECT
+    date(created_at / 1000, 'unixepoch')  AS entry_date,
+    COUNT(*)                               AS entry_count,
+    AVG(CASE WHEN module_type = 'mood'
+        THEN CAST(json_extract(payload, '$.score') AS REAL) END) AS mood_avg,
+    SUM(CASE WHEN module_type = 'sleep' AND ends_at IS NOT NULL
+        THEN (ends_at - created_at) / 3600000.0 ELSE 0 END) AS sleep_hours
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND created_at >= :week_start
+  AND created_at < :week_end
+GROUP BY entry_date
+ORDER BY entry_date;
+
+-- Year grid: counts per module per month
+selectYearGrid:
+SELECT year_month, module_type, COUNT(*) AS count
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND year_month LIKE :year || '%'
+GROUP BY year_month, module_type
+ORDER BY year_month, module_type;
+
+-- Decade highlights (milestones + pinned only)
+selectDecadeHighlights:
+SELECT id, created_at, module_type, title, note, is_pinned
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND created_at >= :decade_start
+  AND created_at < :decade_end
+  AND (module_type = 'milestone' OR is_pinned = 1)
+ORDER BY created_at DESC;
+
+-- Single entry by id
+selectById:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_lat, location_lng, location_name, is_pinned, payload,
+       deleted_at, updated_at
+FROM timeline_entries
+WHERE id = :id;
+
+-- Full-text search (ordered by recency; FTS5 rank ordering added in a later version)
+searchEntries:
+SELECT e.id, e.created_at, e.module_type, e.title, e.note
+FROM timeline_entries e
+INNER JOIN entry_fts f ON f.entry_id = e.id
+WHERE entry_fts MATCH :query
+  AND e.deleted_at IS NULL
+  AND (:module_type IS NULL OR e.module_type = :module_type)
+ORDER BY e.created_at DESC
+LIMIT :limit;
+
+
+-- ============================================================
+-- QUERIES — WRITE
+-- ============================================================
+
+insertEntry:
+INSERT INTO timeline_entries (
+    id, created_at, ends_at, module_type, title, note,
+    media_uri, location_lat, location_lng, location_name,
+    is_pinned, payload, deleted_at, updated_at,
+    month_day, year_month, year_week
+) VALUES (
+    :id, :created_at, :ends_at, :module_type, :title, :note,
+    :media_uri, :location_lat, :location_lng, :location_name,
+    :is_pinned, :payload, NULL, :updated_at,
+    :month_day, :year_month, :year_week
+);
+
+updateEntry:
+UPDATE timeline_entries
+SET title = :title, note = :note, media_uri = :media_uri,
+    is_pinned = :is_pinned, payload = :payload,
+    updated_at = :updated_at
+WHERE id = :id;
+
+softDeleteEntry:
+UPDATE timeline_entries
+SET deleted_at = :deleted_at, updated_at = :updated_at
+WHERE id = :id;
+
+restoreEntry:
+UPDATE timeline_entries
+SET deleted_at = NULL, updated_at = :updated_at
+WHERE id = :id;
+
+
+-- ============================================================
+-- QUERIES — TAGS
+-- ============================================================
+
+insertOrIgnoreTag:
+INSERT OR IGNORE INTO tags (name) VALUES (:name);
+
+selectTagByName:
+SELECT id, name FROM tags WHERE name = :name COLLATE NOCASE;
+
+insertEntryTag:
+INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (:entry_id, :tag_id);
+
+selectTagsForEntry:
+SELECT t.id, t.name
+FROM tags t
+INNER JOIN entry_tags et ON et.tag_id = t.id
+WHERE et.entry_id = :entry_id;
+
+selectEntriesByTag:
+SELECT e.id, e.created_at, e.module_type, e.title, e.note, e.media_uri, e.payload
+FROM timeline_entries e
+INNER JOIN entry_tags et ON et.entry_id = e.id
+INNER JOIN tags t        ON t.id = et.tag_id
+WHERE t.name = :tag_name COLLATE NOCASE
+  AND e.deleted_at IS NULL
+  AND (e.created_at < :before_ts OR (e.created_at = :before_ts AND e.id < :before_id))
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT :limit;
+
+
+-- ============================================================
+-- QUERIES — MEDIA
+-- ============================================================
+
+insertMediaAttachment:
+INSERT INTO media_attachments (
+    id, entry_id, file_path, thumbnail_path,
+    width, height, file_size_bytes, sort_order, created_at
+) VALUES (
+    :id, :entry_id, :file_path, :thumbnail_path,
+    :width, :height, :file_size_bytes, :sort_order, :created_at
+);
+
+selectMediaForEntry:
+SELECT id, entry_id, file_path, thumbnail_path, width, height, file_size_bytes, sort_order
+FROM media_attachments
+WHERE entry_id = :entry_id
+ORDER BY sort_order ASC;
+
+deleteMediaAttachment:
+DELETE FROM media_attachments WHERE id = :id;
+
+
+-- ============================================================
+-- QUERIES — SUMMARIES
+-- ============================================================
+
+upsertDailySummary:
+INSERT INTO daily_summaries (date, entry_count, mood_avg, sleep_hours, has_journal, has_milestone, updated_at)
+VALUES (:date, :entry_count, :mood_avg, :sleep_hours, :has_journal, :has_milestone, :updated_at)
+ON CONFLICT(date) DO UPDATE SET
+    entry_count   = excluded.entry_count,
+    mood_avg      = excluded.mood_avg,
+    sleep_hours   = excluded.sleep_hours,
+    has_journal   = excluded.has_journal,
+    has_milestone = excluded.has_milestone,
+    updated_at    = excluded.updated_at;
+
+selectDailySummariesForMonth:
+SELECT * FROM daily_summaries
+WHERE date LIKE :year_month || '%'
+ORDER BY date;
+
+selectMonthlySummary:
+SELECT * FROM monthly_summaries
+WHERE year_month = :year_month;
