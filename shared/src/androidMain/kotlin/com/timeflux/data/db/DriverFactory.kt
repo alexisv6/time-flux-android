@@ -5,6 +5,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.timeflux.db.TimeFluxDatabase
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 
 actual class DriverFactory(private val context: Context) {
     actual fun createDriver(): SqlDriver {
@@ -12,6 +13,7 @@ actual class DriverFactory(private val context: Context) {
             schema = TimeFluxDatabase.Schema,
             context = context,
             name = "timeflux.db",
+            factory = RequerySQLiteOpenHelperFactory(),
             callback = object : AndroidSqliteDriver.Callback(TimeFluxDatabase.Schema) {
                 override fun onConfigure(db: SupportSQLiteDatabase) {
                     db.enableWriteAheadLogging()          // journal_mode=WAL returns a row — can't use execSQL on Android 14+

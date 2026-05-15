@@ -40,6 +40,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.requery.sqlite.android)
             implementation(libs.koin.android)
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.ktor.client.okhttp)
@@ -72,7 +73,7 @@ sqldelight {
         create("TimeFluxDatabase") {
             packageName.set("com.timeflux.db")
             // BundledSQLiteDriver ships a modern SQLite; target 3.38 for GENERATED columns + JSON
-            dialect("app.cash.sqldelight:sqlite-3-38-dialect:2.0.2")
+            dialect("app.cash.sqldelight:sqlite-3-38-dialect:2.3.2")
             generateAsync.set(false)
             schemaOutputDirectory.set(file("src/commonMain/sqldelight/schema"))
             verifyMigrations.set(true)

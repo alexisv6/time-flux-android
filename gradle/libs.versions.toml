@@ -1,23 +1,24 @@
 [versions]
-kotlin                  = "2.1.0"
+kotlin                  = "2.3.20"
 agp                     = "8.7.3"
 coroutines              = "1.9.0"
 serialization           = "1.7.3"
 datetime                = "0.6.1"
 ktor                    = "3.0.3"
-sqldelight              = "2.0.2"
+sqldelight              = "2.3.2"
 koin                    = "4.0.0"
 lifecycle               = "2.8.7"
 androidx-lifecycle      = "2.8.7"
 multiplatform-settings  = "1.2.0"
 kermit                  = "2.0.4"
-skie                    = "0.9.5"
+skie                    = "0.10.11"
 
 # Android
 compose-bom             = "2024.12.01"
 activity-compose        = "1.9.3"
 core-ktx                = "1.15.0"
 androidx-sqlite         = "2.5.0"
+requery-sqlite          = "3.49.0"
 
 [plugins]
 kotlin-multiplatform    = { id = "org.jetbrains.kotlin.multiplatform",      version.ref = "kotlin" }
@@ -43,6 +44,8 @@ sqldelight-sqlite-driver    = { group = "app.cash.sqldelight", name = "sqlite-dr
 
 # AndroidX SQLite (BundledSQLiteDriver for FTS5 + window functions)
 androidx-sqlite-bundled     = { group = "androidx.sqlite", name = "sqlite-bundled",                   version.ref = "androidx-sqlite" }
+# Requery bundled SQLite — provides SupportSQLiteOpenHelper.Factory with FTS5
+requery-sqlite-android      = { group = "com.github.requery", name = "sqlite-android",                version.ref = "requery-sqlite" }
 
 # Koin
 koin-core                   = { group = "io.insert-koin", name = "koin-core",                         version.ref = "koin" }

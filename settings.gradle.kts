@@ -11,6 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://jitpack.io")
         // JetBrains Compose Multiplatform + lifecycle-viewmodel for KMP
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
