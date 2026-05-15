@@ -19,4 +19,5 @@ data class TimelineUiState(
     val hasMore: Boolean = true,
     val userMessage: String? = null,
     val availableTags: List<Tag> = emptyList(),
+    val filter: TimelineFilter = TimelineFilter(),
 )

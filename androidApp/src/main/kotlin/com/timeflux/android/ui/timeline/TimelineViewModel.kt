@@ -76,6 +76,10 @@ class TimelineViewModel(
         }
     }
 
+    fun setFilter(filter: TimelineFilter) {
+        _state.update { it.copy(filter = filter) }
+    }
+
     fun addMilestone(params: CreateMilestoneUseCase.Params) {
         viewModelScope.launch {
             when (val result = createMilestone(params)) {

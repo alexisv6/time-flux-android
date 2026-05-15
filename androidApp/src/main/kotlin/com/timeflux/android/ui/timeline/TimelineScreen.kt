@@ -22,12 +22,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -50,11 +55,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.add.AddEntryBottomSheet
-import com.timeflux.android.ui.cardEmoji
-import com.timeflux.android.ui.toDisplayDate
 import com.timeflux.android.ui.badgeColor
 import com.timeflux.android.ui.badgeLabel
+import com.timeflux.android.ui.cardEmoji
+import com.timeflux.android.ui.displayName
 import com.timeflux.android.ui.energyScoreEmoji
+import com.timeflux.android.ui.toDisplayDate
 import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.TimelineEntry
@@ -66,19 +72,23 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddSheet by remember { mutableStateOf(false) }
+    var showAddSheet    by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
-    // Dismiss the add sheet when an entry is successfully created
+    val displayEntries = remember(state.entries, state.filter) {
+        if (state.filter.isActive) state.entries.filter { state.filter.matches(it) }
+        else state.entries
+    }
+
     LaunchedEffect(Unit) {
         viewModel.entryAdded.collect { showAddSheet = false }
     }
 
-    // Show snackbar for user messages (errors, validation feedback)
     LaunchedEffect(state.userMessage) {
         state.userMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -93,6 +103,16 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
+                actions = {
+                    IconButton(onClick = { showFilterSheet = true }) {
+                        Icon(
+                            Icons.Default.FilterList,
+                            contentDescription = "Filter",
+                            tint = if (state.filter.isActive) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                },
             )
         },
         floatingActionButton = {
@@ -102,11 +122,24 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        TimelineContent(
-            state = state,
-            onLoadMore = viewModel::loadNextPage,
-            modifier = Modifier.padding(innerPadding),
-        )
+        Column(modifier = Modifier.padding(innerPadding)) {
+            ActiveFilterBar(
+                filter = state.filter,
+                onRemoveModuleType  = { viewModel.setFilter(state.filter.copy(moduleType = null)) },
+                onRemoveDateRange   = { viewModel.setFilter(state.filter.copy(dateRange = null)) },
+                onRemoveTag         = { tag -> viewModel.setFilter(state.filter.copy(tags = state.filter.tags - tag)) },
+                onRemoveSignificant = { viewModel.setFilter(state.filter.copy(significantOnly = false)) },
+            )
+            TimelineContent(
+                entries       = displayEntries,
+                allCount      = state.entries.size,
+                filterActive  = state.filter.isActive,
+                isLoading     = state.isLoading,
+                isLoadingMore = state.isLoadingMore,
+                hasMore       = state.hasMore,
+                onLoadMore    = viewModel::loadNextPage,
+            )
+        }
     }
 
     if (showAddSheet) {
@@ -117,20 +150,91 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
             availableTags     = state.availableTags,
         )
     }
+
+    if (showFilterSheet) {
+        FilterBottomSheet(
+            filter        = state.filter,
+            availableTags = state.availableTags,
+            onApply       = { viewModel.setFilter(it) },
+            onDismiss     = { showFilterSheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ActiveFilterBar(
+    filter: TimelineFilter,
+    onRemoveModuleType: () -> Unit,
+    onRemoveDateRange: () -> Unit,
+    onRemoveTag: (String) -> Unit,
+    onRemoveSignificant: () -> Unit,
+) {
+    if (!filter.isActive) return
+
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        filter.moduleType?.let { type ->
+            ActiveChip(label = type.displayName(), onRemove = onRemoveModuleType)
+        }
+        filter.dateRange?.let { range ->
+            ActiveChip(label = range.label, onRemove = onRemoveDateRange)
+        }
+        filter.tags.forEach { tag ->
+            ActiveChip(label = "#$tag", onRemove = { onRemoveTag(tag) })
+        }
+        if (filter.significantOnly) {
+            ActiveChip(label = "Major+ only", onRemove = onRemoveSignificant)
+        }
+    }
+}
+
+@Composable
+private fun ActiveChip(label: String, onRemove: () -> Unit) {
+    AssistChip(
+        onClick = onRemove,
+        label   = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        trailingIcon = {
+            Icon(Icons.Default.Close, contentDescription = "Remove filter", modifier = Modifier.size(14.dp))
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            labelColor     = MaterialTheme.colorScheme.onPrimaryContainer,
+            trailingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    )
 }
 
 // ---- Content area --------------------------------------------------------------------------
 
 @Composable
 private fun TimelineContent(
-    state: TimelineUiState,
+    entries: List<TimelineEntry>,
+    allCount: Int,
+    filterActive: Boolean,
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
-        state.isLoading         -> FullScreenLoader(modifier)
-        state.entries.isEmpty() -> EmptyTimeline(modifier)
-        else                    -> TimelineList(state, onLoadMore, modifier)
+        isLoading        -> FullScreenLoader(modifier)
+        entries.isEmpty() && !filterActive -> EmptyTimeline(modifier)
+        entries.isEmpty() -> EmptyFilterResult(modifier)
+        else -> TimelineList(
+            entries       = entries,
+            allCount      = allCount,
+            filterActive  = filterActive,
+            isLoadingMore = isLoadingMore,
+            hasMore       = hasMore,
+            onLoadMore    = onLoadMore,
+            modifier      = modifier,
+        )
     }
 }
 
@@ -159,19 +263,39 @@ private fun EmptyTimeline(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun EmptyFilterResult(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🔍", style = MaterialTheme.typography.displayLarge)
+            Spacer(Modifier.height(12.dp))
+            Text("No entries match", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Try adjusting your filters",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun TimelineList(
-    state: TimelineUiState,
+    entries: List<TimelineEntry>,
+    allCount: Int,
+    filterActive: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
 
-    // Trigger load-more when within 3 items of the end
     val loadMoreTrigger by remember {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             val total = listState.layoutInfo.totalItemsCount
-            total > 0 && lastVisible >= total - 3 && state.hasMore && !state.isLoadingMore
+            total > 0 && lastVisible >= total - 3 && hasMore && !isLoadingMore
         }
     }
     LaunchedEffect(loadMoreTrigger) {
@@ -184,11 +308,22 @@ private fun TimelineList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxSize(),
     ) {
-        items(state.entries, key = { it.id }) { entry ->
+        if (filterActive) {
+            item {
+                Text(
+                    text = "Showing ${entries.size} of $allCount loaded entries",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
+            }
+        }
+
+        items(entries, key = { it.id }) { entry ->
             TimelineEntryCard(entry)
         }
 
-        if (state.isLoadingMore) {
+        if (isLoadingMore) {
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
