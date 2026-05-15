@@ -1,6 +1,7 @@
 package com.timeflux.domain.repository
 
 import com.timeflux.domain.model.Outcome
+import com.timeflux.domain.model.Tag
 import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.domain.model.YearGridRow
 import kotlinx.coroutines.flow.Flow
@@ -75,6 +76,21 @@ interface TimelineRepository {
         moduleType: String? = null,
         limit: Long = SEARCH_LIMIT,
     ): Outcome<List<TimelineEntry>>
+
+    // ---- Tags ----
+
+    /** All tags in the database, sorted alphabetically. Used to populate autocomplete. */
+    suspend fun getAllTags(): Outcome<List<Tag>>
+
+    /**
+     * Atomically link [tagNames] to [entryId], creating any tags that don't yet exist.
+     * Existing links for this entry are not removed — call [deleteAllTagsForEntry] first
+     * if replacing the full tag set (e.g. on edit).
+     */
+    suspend fun setTagsForEntry(entryId: String, tagNames: List<String>): Outcome<Unit>
+
+    /** Remove all tag links for [entryId] (used before re-saving tags on edit). */
+    suspend fun deleteAllTagsForEntry(entryId: String): Outcome<Unit>
 
     // ---- Writes ----
 

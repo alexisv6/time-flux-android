@@ -36,11 +36,15 @@ class TimelineViewModel(
 
     init {
         loadInitialPage()
+        loadAllTags()
     }
 
     // ---- Public actions ----------------------------------------------------------------
 
-    fun refresh() = loadInitialPage()
+    fun refresh() {
+        loadInitialPage()
+        loadAllTags()
+    }
 
     /**
      * Appends the next page when the user scrolls near the bottom. Guards against
@@ -97,6 +101,15 @@ class TimelineViewModel(
 
     // ---- Private helpers ---------------------------------------------------------------
 
+    private fun loadAllTags() {
+        viewModelScope.launch {
+            when (val result = repository.getAllTags()) {
+                is Outcome.Success -> _state.update { it.copy(availableTags = result.data) }
+                is Outcome.Failure -> log.w { "loadAllTags failed: $result" }
+            }
+        }
+    }
+
     private fun loadInitialPage() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, userMessage = null) }
@@ -126,6 +139,7 @@ class TimelineViewModel(
      * fetch fails (e.g. DB race).
      */
     private suspend fun prependNewEntry(id: String) {
+        loadAllTags()
         when (val result = repository.getById(id)) {
             is Outcome.Success -> {
                 _state.update { it.copy(entries = listOf(result.data) + it.entries) }

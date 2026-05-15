@@ -259,8 +259,14 @@ INSERT OR IGNORE INTO tags (name) VALUES (:name);
 selectTagByName:
 SELECT id, name FROM tags WHERE name = :name COLLATE NOCASE;
 
+selectAllTags:
+SELECT id, name FROM tags ORDER BY name ASC;
+
 insertEntryTag:
 INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (:entry_id, :tag_id);
+
+deleteAllTagsForEntry:
+DELETE FROM entry_tags WHERE entry_id = :entry_id;
 
 selectTagsForEntry:
 SELECT t.id, t.name

@@ -20,6 +20,8 @@ data class MoodPayload(
     val energy: Int? = null,
     /** Free-form emotion tag (e.g. "excited", "anxious", "grateful"). */
     val emotion: String? = null,
+    /** Denormalized tag names for card display; entry_tags is the canonical filter index. */
+    val tags: List<String> = emptyList(),
 )
 
 /** Decode this entry's JSON payload into a typed [MoodPayload]. */

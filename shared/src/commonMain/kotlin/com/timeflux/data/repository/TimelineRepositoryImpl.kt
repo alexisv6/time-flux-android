@@ -9,6 +9,7 @@ import com.timeflux.data.db.toYearMonth
 import com.timeflux.data.db.toYearWeek
 import com.timeflux.db.TimeFluxDatabase
 import com.timeflux.domain.model.Outcome
+import com.timeflux.domain.model.Tag
 import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.domain.model.YearGridRow
 import com.timeflux.domain.model.toOutcome
@@ -168,6 +169,37 @@ class TimelineRepositoryImpl(
             }.executeAsList()
         }.toOutcome()
     }
+
+    // ---- Tags --------------------------------------------------------------------------
+
+    override suspend fun getAllTags(): Outcome<List<Tag>> = withContext(Dispatchers.IO) {
+        runCatching {
+            q.selectAllTags { id, name -> Tag(id = id, name = name) }.executeAsList()
+        }.toOutcome()
+    }
+
+    override suspend fun setTagsForEntry(entryId: String, tagNames: List<String>): Outcome<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                if (tagNames.isEmpty()) return@runCatching
+                q.transaction {
+                    for (name in tagNames) {
+                        q.insertOrIgnoreTag(name)
+                        val tagId = q.selectTagByName(name) { id, _ -> id }.executeAsOne()
+                        q.insertEntryTag(entry_id = entryId, tag_id = tagId)
+                    }
+                }
+                log.d { "setTagsForEntry id=$entryId tags=$tagNames" }
+            }.toOutcome()
+        }
+
+    override suspend fun deleteAllTagsForEntry(entryId: String): Outcome<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                q.deleteAllTagsForEntry(entryId)
+                log.d { "deleteAllTagsForEntry id=$entryId" }
+            }.toOutcome()
+        }
 
     // ---- Writes ------------------------------------------------------------------------
 

@@ -44,6 +44,7 @@ class CreateMoodEntryUseCase(
         val energy: Int? = null,
         val emotion: String? = null,
         val createdAt: Instant = Clock.System.now(),
+        val tags: List<String> = emptyList(),
     )
 
     suspend operator fun invoke(params: Params): Outcome<String> {
@@ -73,6 +74,7 @@ class CreateMoodEntryUseCase(
                 score   = params.score,
                 energy  = params.energy,
                 emotion = params.emotion,
+                tags    = params.tags,
             ),
         )
 
@@ -85,14 +87,22 @@ class CreateMoodEntryUseCase(
             updatedAt  = params.createdAt,
         )
 
-        return repository.insert(entry)
-            .map { id }
-            .also { outcome ->
-                when (outcome) {
-                    is Outcome.Success -> log.i { "created mood entry id=$id score=${params.score}" }
-                    is Outcome.Failure -> log.e { "insert failed: $outcome" }
-                }
+        val insertOutcome = repository.insert(entry)
+        if (insertOutcome is Outcome.Failure) {
+            log.e { "insert failed: $insertOutcome" }
+            return insertOutcome
+        }
+
+        if (params.tags.isNotEmpty()) {
+            val tagOutcome = repository.setTagsForEntry(id, params.tags)
+            if (tagOutcome is Outcome.Failure) {
+                log.e { "setTagsForEntry failed: $tagOutcome" }
+                return tagOutcome
             }
+        }
+
+        log.i { "created mood entry id=$id score=${params.score} tags=${params.tags}" }
+        return Outcome.Success(id)
     }
 
     companion object {

@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
@@ -29,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -52,6 +56,9 @@ import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.module.mood.MoodPayload
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,6 +109,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
             onDismiss         = { showAddSheet = false },
             onSubmitMilestone = viewModel::addMilestone,
             onSubmitMood      = viewModel::addMoodEntry,
+            availableTags     = state.availableTags,
         )
     }
 }
@@ -190,8 +198,21 @@ private fun TimelineList(
 
 // ---- Entry card ----------------------------------------------------------------------------
 
+private fun payloadTags(payload: String): List<String> =
+    try {
+        AppJson.parseToJsonElement(payload)
+            .jsonObject["tags"]
+            ?.jsonArray
+            ?.map { it.jsonPrimitive.content }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+    } catch (_: Exception) { emptyList() }
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifier) {
+    val tags = remember(entry.payload) { payloadTags(entry.payload) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -258,6 +279,25 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
                         )
                         if (entry.isPinned) {
                             Text("📌", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+
+                if (tags.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        tags.forEach { tag ->
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = entry.moduleType.accentColor().copy(alpha = 0.12f),
+                            ) {
+                                Text(
+                                    text = "#$tag",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = entry.moduleType.accentColor(),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
                         }
                     }
                 }

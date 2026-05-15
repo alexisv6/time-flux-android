@@ -34,6 +34,8 @@ data class MilestonePayload(
     val emoji: String? = null,
     /** Optional hex accent color override for this entry (e.g. "#E91E63"). */
     val color: String? = null,
+    /** Denormalized tag names for card display; entry_tags is the canonical filter index. */
+    val tags: List<String> = emptyList(),
 )
 
 /** Decode this entry's JSON payload into a typed [MilestonePayload]. */

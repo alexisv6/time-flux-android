@@ -51,6 +51,7 @@ class CreateMilestoneUseCase(
         val locationLat: Double? = null,
         val locationLng: Double? = null,
         val isPinned: Boolean = false,
+        val tags: List<String> = emptyList(),
     )
 
     suspend operator fun invoke(params: Params): Outcome<String> {
@@ -70,6 +71,7 @@ class CreateMilestoneUseCase(
                 category = params.category,
                 emoji    = params.emoji,
                 color    = params.color,
+                tags     = params.tags,
             ),
         )
 
@@ -87,13 +89,21 @@ class CreateMilestoneUseCase(
             updatedAt    = params.createdAt,
         )
 
-        return repository.insert(entry)
-            .map { id }
-            .also { outcome ->
-                when (outcome) {
-                    is Outcome.Success -> log.i { "created milestone id=$id" }
-                    is Outcome.Failure -> log.e { "insert failed: $outcome" }
-                }
+        val insertOutcome = repository.insert(entry)
+        if (insertOutcome is Outcome.Failure) {
+            log.e { "insert failed: $insertOutcome" }
+            return insertOutcome
+        }
+
+        if (params.tags.isNotEmpty()) {
+            val tagOutcome = repository.setTagsForEntry(id, params.tags)
+            if (tagOutcome is Outcome.Failure) {
+                log.e { "setTagsForEntry failed: $tagOutcome" }
+                return tagOutcome
             }
+        }
+
+        log.i { "created milestone id=$id tags=${params.tags}" }
+        return Outcome.Success(id)
     }
 }

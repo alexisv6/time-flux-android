@@ -2,6 +2,8 @@ package com.timeflux.android.ui.add
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -10,22 +12,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,12 +48,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.defaultEmoji
 import com.timeflux.android.ui.displayName
 import com.timeflux.android.ui.moodScoreEmoji
 import com.timeflux.domain.model.ModuleType
+import com.timeflux.domain.model.Tag
 import com.timeflux.module.milestone.CreateMilestoneUseCase
 import com.timeflux.module.milestone.MilestoneCategory
 import com.timeflux.module.mood.CreateMoodEntryUseCase
@@ -54,6 +66,7 @@ fun AddEntryBottomSheet(
     onDismiss: () -> Unit,
     onSubmitMilestone: (CreateMilestoneUseCase.Params) -> Unit,
     onSubmitMood: (CreateMoodEntryUseCase.Params) -> Unit,
+    availableTags: List<Tag> = emptyList(),
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedType by remember { mutableStateOf<ModuleType?>(null) }
@@ -66,13 +79,15 @@ fun AddEntryBottomSheet(
             null -> ModuleTypeSelector(onTypeSelected = { selectedType = it })
 
             ModuleType.MILESTONE -> MilestoneForm(
-                onSubmit = onSubmitMilestone,
-                onBack   = { selectedType = null },
+                availableTags = availableTags,
+                onSubmit      = onSubmitMilestone,
+                onBack        = { selectedType = null },
             )
 
             ModuleType.MOOD -> MoodForm(
-                onSubmit = onSubmitMood,
-                onBack   = { selectedType = null },
+                availableTags = availableTags,
+                onSubmit      = onSubmitMood,
+                onBack        = { selectedType = null },
             )
 
             else -> {
@@ -135,13 +150,15 @@ private fun ModuleCard(type: ModuleType, modifier: Modifier = Modifier, onClick:
 
 @Composable
 private fun MilestoneForm(
+    availableTags: List<Tag>,
     onSubmit: (CreateMilestoneUseCase.Params) -> Unit,
     onBack: () -> Unit,
 ) {
-    var title    by remember { mutableStateOf("") }
-    var note     by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(MilestoneCategory.PERSONAL) }
-    var emoji    by remember { mutableStateOf("") }
+    var title      by remember { mutableStateOf("") }
+    var note       by remember { mutableStateOf("") }
+    var category   by remember { mutableStateOf(MilestoneCategory.PERSONAL) }
+    var emoji      by remember { mutableStateOf("") }
+    var tags       by remember { mutableStateOf(emptyList<String>()) }
     var titleError by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -151,7 +168,6 @@ private fun MilestoneForm(
             .padding(bottom = 16.dp)
             .imePadding(),
     ) {
-        // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -210,6 +226,15 @@ private fun MilestoneForm(
             singleLine = true,
         )
 
+        Spacer(Modifier.height(16.dp))
+
+        TagInputField(
+            selectedTags  = tags,
+            availableTags = availableTags,
+            onTagsChanged = { tags = it },
+            modifier      = Modifier.fillMaxWidth(),
+        )
+
         Spacer(Modifier.height(24.dp))
 
         Button(
@@ -223,6 +248,7 @@ private fun MilestoneForm(
                             note     = note.trim().ifBlank { null },
                             category = category,
                             emoji    = emoji.trim().ifBlank { null },
+                            tags     = tags,
                         )
                     )
                 }
@@ -238,12 +264,14 @@ private fun MilestoneForm(
 
 @Composable
 private fun MoodForm(
+    availableTags: List<Tag>,
     onSubmit: (CreateMoodEntryUseCase.Params) -> Unit,
     onBack: () -> Unit,
 ) {
     var score   by remember { mutableIntStateOf(3) }
     var note    by remember { mutableStateOf("") }
     var emotion by remember { mutableStateOf("") }
+    var tags    by remember { mutableStateOf(emptyList<String>()) }
 
     Column(
         modifier = Modifier
@@ -252,7 +280,6 @@ private fun MoodForm(
             .padding(bottom = 16.dp)
             .imePadding(),
     ) {
-        // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -265,7 +292,6 @@ private fun MoodForm(
         Text("How are you feeling?", style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(12.dp))
 
-        // 1–5 score row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -307,6 +333,15 @@ private fun MoodForm(
             singleLine = true,
         )
 
+        Spacer(Modifier.height(16.dp))
+
+        TagInputField(
+            selectedTags  = tags,
+            availableTags = availableTags,
+            onTagsChanged = { tags = it },
+            modifier      = Modifier.fillMaxWidth(),
+        )
+
         Spacer(Modifier.height(24.dp))
 
         Button(
@@ -316,12 +351,132 @@ private fun MoodForm(
                         score   = score,
                         note    = note.trim().ifBlank { null },
                         emotion = emotion.trim().ifBlank { null },
+                        tags    = tags,
                     )
                 )
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Save Check-in")
+        }
+    }
+}
+
+// ---- Tag input with autocomplete -----------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun TagInputField(
+    selectedTags: List<String>,
+    availableTags: List<Tag>,
+    onTagsChanged: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var input    by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    val trimmed = input.trim()
+    val suggestions = remember(trimmed, availableTags, selectedTags) {
+        if (trimmed.isEmpty()) emptyList()
+        else availableTags.filter {
+            it.name.contains(trimmed, ignoreCase = true) && it.name !in selectedTags
+        }.take(5)
+    }
+    val showCreate = trimmed.isNotEmpty() &&
+        availableTags.none { it.name.equals(trimmed, ignoreCase = true) } &&
+        trimmed !in selectedTags
+
+    expanded = suggestions.isNotEmpty() || showCreate
+
+    fun addTag(name: String) {
+        val tag = name.trim()
+        if (tag.isNotBlank() && tag !in selectedTags) {
+            onTagsChanged(selectedTags + tag)
+        }
+        input = ""
+        expanded = false
+    }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Tags",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+
+        if (selectedTags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                selectedTags.forEach { tag ->
+                    InputChip(
+                        selected = false,
+                        onClick  = {},
+                        label    = { Text("#$tag") },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { onTagsChanged(selectedTags - tag) },
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove $tag",
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { raw ->
+                    when {
+                        raw.endsWith(",") -> addTag(raw.dropLast(1))
+                        else -> input = raw
+                    }
+                },
+                label = { Text(if (selectedTags.isEmpty()) "Add tags" else "Add another tag") },
+                placeholder = { Text("Type to search or create…") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { addTag(input) }),
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                suggestions.forEach { tag ->
+                    DropdownMenuItem(
+                        text = { Text(tag.name) },
+                        onClick = { addTag(tag.name) },
+                    )
+                }
+                if (showCreate) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "+ Create \"$trimmed\"",
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        onClick = { addTag(trimmed) },
+                    )
+                }
+            }
         }
     }
 }
