@@ -43,6 +43,8 @@ class CreateMoodEntryUseCase(
         val note: String? = null,
         val energy: Int? = null,
         val emotion: String? = null,
+        val emotions: List<String> = emptyList(),
+        val factors: List<String> = emptyList(),
         val createdAt: Instant = Clock.System.now(),
         val tags: List<String> = emptyList(),
     )
@@ -74,6 +76,8 @@ class CreateMoodEntryUseCase(
                 score   = params.score,
                 energy  = params.energy,
                 emotion = params.emotion,
+                emotions = params.emotions,
+                factors  = params.factors,
                 tags    = params.tags,
             ),
         )

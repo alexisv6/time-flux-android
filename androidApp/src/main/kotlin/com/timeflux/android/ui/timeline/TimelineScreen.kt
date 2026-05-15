@@ -54,6 +54,7 @@ import com.timeflux.android.ui.cardEmoji
 import com.timeflux.android.ui.toDisplayDate
 import com.timeflux.android.ui.badgeColor
 import com.timeflux.android.ui.badgeLabel
+import com.timeflux.android.ui.energyScoreEmoji
 import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.TimelineEntry
@@ -340,18 +341,40 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
 
 @Composable
 private fun MoodScoreRow(entry: TimelineEntry) {
-    val score = remember(entry.payload) {
-        try { AppJson.decodeFromString(MoodPayload.serializer(), entry.payload).score }
-        catch (_: Exception) { 3 }
+    val payload = remember(entry.payload) {
+        try { AppJson.decodeFromString(MoodPayload.serializer(), entry.payload) }
+        catch (_: Exception) { MoodPayload(score = 3) }
     }
-    Row {
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
         repeat(5) { i ->
             Text(
-                text  = if (i < score) "●" else "○",
-                color = if (i < score) MaterialTheme.colorScheme.primary
+                text  = if (i < payload.score) "●" else "○",
+                color = if (i < payload.score) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.outlineVariant,
                 style = MaterialTheme.typography.labelMedium,
             )
         }
+        payload.energy?.let { e ->
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text  = energyScoreEmoji(e),
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
+
+    val displayEmotions = remember(payload) {
+        payload.emotions.take(3).joinToString(" · ").ifBlank {
+            payload.emotion?.take(30) ?: ""
+        }
+    }
+    if (displayEmotions.isNotBlank()) {
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text  = displayEmotions,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

@@ -104,6 +104,36 @@ fun moodScoreEmoji(score: Int): String = when (score) {
     else -> "😄"
 }
 
+fun energyScoreEmoji(score: Int): String = when (score) {
+    1    -> "🪫"
+    2    -> "😴"
+    3    -> "😐"
+    4    -> "⚡"
+    else -> "🔋"
+}
+
+/**
+ * Curated 24-word emotion vocabulary, grouped into 4 valence/energy quadrants.
+ * Order within each group goes from most to least commonly felt.
+ */
+val EMOTION_VOCABULARY: List<Pair<String, List<String>>> = listOf(
+    "Positive · Energized" to listOf("Excited", "Joyful", "Inspired", "Motivated", "Grateful", "Enthusiastic"),
+    "Positive · Calm"      to listOf("Content", "Relaxed", "Peaceful", "Hopeful", "Satisfied", "Serene"),
+    "Negative · Energized" to listOf("Anxious", "Stressed", "Frustrated", "Overwhelmed", "Angry", "Restless"),
+    "Negative · Low"       to listOf("Sad", "Tired", "Lonely", "Bored", "Melancholy", "Numb"),
+)
+
+val MOOD_FACTORS: List<Pair<String, String>> = listOf(
+    "Sleep"        to "😴",
+    "Exercise"     to "🏃",
+    "Social"       to "👥",
+    "Work"         to "💼",
+    "Food"         to "🍽️",
+    "Weather"      to "🌤️",
+    "Health"       to "🩺",
+    "Relationship" to "❤️",
+)
+
 // ---- Date formatting -----------------------------------------------------------------------
 
 /**

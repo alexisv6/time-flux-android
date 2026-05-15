@@ -15,11 +15,15 @@ import kotlinx.serialization.json.Json
 data class MoodPayload(
     /** Overall mood on a 1–5 scale (1 = very low, 5 = very high). */
     val score: Int,
-    /** Optional energy level on a 1–5 scale. Tracked separately so mood and energy
-     *  can diverge (e.g. tired but happy). */
+    /** Optional energy level on a 1–5 scale (1 = drained, 5 = energized).
+     *  Tracked separately so mood and energy can diverge (e.g. tired but happy). */
     val energy: Int? = null,
-    /** Free-form emotion tag (e.g. "excited", "anxious", "grateful"). */
+    /** Legacy free-form emotion tag — retained for backward compat with existing entries. */
     val emotion: String? = null,
+    /** Multi-selected emotions from the curated vocabulary (e.g. ["Calm", "Grateful"]). */
+    val emotions: List<String> = emptyList(),
+    /** Contextual factors that influenced this check-in (e.g. ["Sleep", "Exercise"]). */
+    val factors: List<String> = emptyList(),
     /** Denormalized tag names for card display; entry_tags is the canonical filter index. */
     val tags: List<String> = emptyList(),
 )

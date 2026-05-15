@@ -52,10 +52,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.timeflux.android.ui.EMOTION_VOCABULARY
+import com.timeflux.android.ui.MOOD_FACTORS
 import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.defaultEmoji
 import com.timeflux.android.ui.displayLabel
 import com.timeflux.android.ui.displayName
+import com.timeflux.android.ui.energyScoreEmoji
 import com.timeflux.android.ui.moodScoreEmoji
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
@@ -405,16 +408,19 @@ private fun MilestoneSmartFields(
 
 // ---- Step 2b: Mood form --------------------------------------------------------------------
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MoodForm(
     availableTags: List<Tag>,
     onSubmit: (CreateMoodEntryUseCase.Params) -> Unit,
     onBack: () -> Unit,
 ) {
-    var score   by remember { mutableIntStateOf(3) }
-    var note    by remember { mutableStateOf("") }
-    var emotion by remember { mutableStateOf("") }
-    var tags    by remember { mutableStateOf(emptyList<String>()) }
+    var score    by remember { mutableIntStateOf(3) }
+    var energy   by remember { mutableStateOf<Int?>(null) }
+    var emotions by remember { mutableStateOf(emptySet<String>()) }
+    var factors  by remember { mutableStateOf(emptySet<String>()) }
+    var note     by remember { mutableStateOf("") }
+    var tags     by remember { mutableStateOf(emptyList<String>()) }
 
     Column(
         modifier = Modifier
@@ -432,9 +438,9 @@ private fun MoodForm(
 
         Spacer(Modifier.height(12.dp))
 
-        Text("How are you feeling?", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(12.dp))
-
+        // ---- Mood score ----
+        FormSectionLabel("How are you feeling?")
+        Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -456,6 +462,82 @@ private fun MoodForm(
             }
         }
 
+        Spacer(Modifier.height(20.dp))
+
+        // ---- Energy level ----
+        FormSectionLabel("Energy level (optional)")
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            (1..5).forEach { e ->
+                val selected = e == energy
+                FilledTonalButton(
+                    onClick = { energy = if (selected) null else e },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (selected) MaterialTheme.colorScheme.secondary
+                                         else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor   = if (selected) MaterialTheme.colorScheme.onSecondary
+                                         else MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
+                    Text(energyScoreEmoji(e))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ---- Emotion vocabulary ----
+        FormSectionLabel("How would you describe it? (optional)")
+        Spacer(Modifier.height(8.dp))
+        EMOTION_VOCABULARY.forEach { (groupLabel, words) ->
+            Text(
+                text = groupLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            ) {
+                words.forEach { word ->
+                    val selected = word in emotions
+                    FilterChip(
+                        selected = selected,
+                        onClick  = {
+                            emotions = if (selected) emotions - word else emotions + word
+                        },
+                        label = { Text(word) },
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // ---- Factors ----
+        FormSectionLabel("What influenced it? (optional)")
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            MOOD_FACTORS.forEach { (name, emoji) ->
+                val selected = name in factors
+                FilterChip(
+                    selected = selected,
+                    onClick  = {
+                        factors = if (selected) factors - name else factors + name
+                    },
+                    label = { Text("$emoji $name") },
+                )
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
@@ -466,17 +548,7 @@ private fun MoodForm(
             maxLines = 3,
         )
 
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = emotion,
-            onValueChange = { emotion = it },
-            label = { Text("Emotion tag (e.g. anxious, grateful)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         TagInputField(
             selectedTags  = tags,
@@ -491,10 +563,12 @@ private fun MoodForm(
             onClick = {
                 onSubmit(
                     CreateMoodEntryUseCase.Params(
-                        score   = score,
-                        note    = note.trim().ifBlank { null },
-                        emotion = emotion.trim().ifBlank { null },
-                        tags    = tags,
+                        score    = score,
+                        energy   = energy,
+                        emotions = emotions.toList(),
+                        factors  = factors.toList(),
+                        note     = note.trim().ifBlank { null },
+                        tags     = tags,
                     )
                 )
             },
