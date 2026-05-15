@@ -22,20 +22,43 @@ enum class MilestoneCategory(val id: String) {
     @SerialName("other")      OTHER("other");
 }
 
+/** How significant this milestone was — used for filtering and visual emphasis on the timeline. */
+@Serializable
+enum class MilestoneSignificance(val id: String) {
+    @SerialName("minor")    MINOR("minor"),
+    @SerialName("notable")  NOTABLE("notable"),
+    @SerialName("major")    MAJOR("major"),
+    @SerialName("defining") DEFINING("defining");
+}
+
 /**
  * Module-specific payload stored as a JSON blob in [TimelineEntry.payload].
  *
  * All fields default so that existing rows remain decodable when new fields are added.
+ * Category-specific smart fields are nullable and only populated when relevant.
  */
 @Serializable
 data class MilestonePayload(
     val category: MilestoneCategory = MilestoneCategory.PERSONAL,
+    val significance: MilestoneSignificance = MilestoneSignificance.NOTABLE,
     /** Optional emoji shown as the entry's visual icon (e.g. "🎓", "💼"). */
     val emoji: String? = null,
     /** Optional hex accent color override for this entry (e.g. "#E91E63"). */
     val color: String? = null,
     /** Denormalized tag names for card display; entry_tags is the canonical filter index. */
     val tags: List<String> = emptyList(),
+    // ---- Career smart fields ----
+    val company: String? = null,
+    val role: String? = null,
+    // ---- Education smart fields ----
+    val institution: String? = null,
+    val program: String? = null,
+    // ---- Travel smart fields ----
+    val destination: String? = null,
+    // ---- Family / social smart fields ----
+    val people: String? = null,   // free text, e.g. "Mom, Sarah, Jake"
+    // ---- Reflection ----
+    val whatChanged: String? = null,
 )
 
 /** Decode this entry's JSON payload into a typed [MilestonePayload]. */

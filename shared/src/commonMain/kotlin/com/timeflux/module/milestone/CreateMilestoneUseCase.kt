@@ -45,6 +45,7 @@ class CreateMilestoneUseCase(
         val note: String? = null,
         val createdAt: Instant = Clock.System.now(),
         val category: MilestoneCategory = MilestoneCategory.PERSONAL,
+        val significance: MilestoneSignificance = MilestoneSignificance.NOTABLE,
         val emoji: String? = null,
         val color: String? = null,
         val locationName: String? = null,
@@ -52,6 +53,14 @@ class CreateMilestoneUseCase(
         val locationLng: Double? = null,
         val isPinned: Boolean = false,
         val tags: List<String> = emptyList(),
+        // Smart fields — populate based on category
+        val company: String? = null,
+        val role: String? = null,
+        val institution: String? = null,
+        val program: String? = null,
+        val destination: String? = null,
+        val people: String? = null,
+        val whatChanged: String? = null,
     )
 
     suspend operator fun invoke(params: Params): Outcome<String> {
@@ -68,10 +77,18 @@ class CreateMilestoneUseCase(
         val payloadJson = json.encodeToString(
             MilestonePayload.serializer(),
             MilestonePayload(
-                category = params.category,
-                emoji    = params.emoji,
-                color    = params.color,
-                tags     = params.tags,
+                category     = params.category,
+                significance = params.significance,
+                emoji        = params.emoji,
+                color        = params.color,
+                tags         = params.tags,
+                company      = params.company,
+                role         = params.role,
+                institution  = params.institution,
+                program      = params.program,
+                destination  = params.destination,
+                people       = params.people,
+                whatChanged  = params.whatChanged,
             ),
         )
 

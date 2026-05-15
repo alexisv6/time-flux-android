@@ -5,6 +5,7 @@ import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.module.milestone.MilestonePayload
+import com.timeflux.module.milestone.MilestoneSignificance
 import com.timeflux.module.mood.MoodPayload
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -69,6 +70,30 @@ fun TimelineEntry.cardEmoji(json: Json = AppJson): String = when (moduleType) {
     } catch (_: Exception) { moduleType.defaultEmoji() }
 
     else -> moduleType.defaultEmoji()
+}
+
+/** Badge label shown on milestone timeline cards for MAJOR and DEFINING entries. */
+fun MilestoneSignificance.badgeLabel(): String? = when (this) {
+    MilestoneSignificance.MINOR    -> null
+    MilestoneSignificance.NOTABLE  -> null
+    MilestoneSignificance.MAJOR    -> "⭐ Major"
+    MilestoneSignificance.DEFINING -> "🌟 Defining"
+}
+
+/** Accent color for the significance badge. */
+fun MilestoneSignificance.badgeColor(): Color = when (this) {
+    MilestoneSignificance.MINOR    -> Color(0xFF9E9E9E)
+    MilestoneSignificance.NOTABLE  -> Color(0xFF7C4DFF)
+    MilestoneSignificance.MAJOR    -> Color(0xFFFF8F00)
+    MilestoneSignificance.DEFINING -> Color(0xFFFDD835)
+}
+
+/** Display label used in the form's significance chip row. */
+fun MilestoneSignificance.displayLabel(): String = when (this) {
+    MilestoneSignificance.MINOR    -> "Minor"
+    MilestoneSignificance.NOTABLE  -> "Notable"
+    MilestoneSignificance.MAJOR    -> "Major"
+    MilestoneSignificance.DEFINING -> "Defining"
 }
 
 fun moodScoreEmoji(score: Int): String = when (score) {

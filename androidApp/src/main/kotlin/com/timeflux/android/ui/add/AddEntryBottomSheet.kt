@@ -22,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,12 +54,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.defaultEmoji
+import com.timeflux.android.ui.displayLabel
 import com.timeflux.android.ui.displayName
 import com.timeflux.android.ui.moodScoreEmoji
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
 import com.timeflux.module.milestone.CreateMilestoneUseCase
 import com.timeflux.module.milestone.MilestoneCategory
+import com.timeflux.module.milestone.MilestoneSignificance
 import com.timeflux.module.mood.CreateMoodEntryUseCase
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,12 +158,23 @@ private fun MilestoneForm(
     onSubmit: (CreateMilestoneUseCase.Params) -> Unit,
     onBack: () -> Unit,
 ) {
-    var title      by remember { mutableStateOf("") }
-    var note       by remember { mutableStateOf("") }
-    var category   by remember { mutableStateOf(MilestoneCategory.PERSONAL) }
-    var emoji      by remember { mutableStateOf("") }
-    var tags       by remember { mutableStateOf(emptyList<String>()) }
-    var titleError by remember { mutableStateOf<String?>(null) }
+    var title        by remember { mutableStateOf("") }
+    var note         by remember { mutableStateOf("") }
+    var category     by remember { mutableStateOf(MilestoneCategory.PERSONAL) }
+    var significance by remember { mutableStateOf(MilestoneSignificance.NOTABLE) }
+    var emoji        by remember { mutableStateOf("") }
+    var tags         by remember { mutableStateOf(emptyList<String>()) }
+    var titleError   by remember { mutableStateOf<String?>(null) }
+    // Smart fields
+    var company      by remember { mutableStateOf("") }
+    var role         by remember { mutableStateOf("") }
+    var institution  by remember { mutableStateOf("") }
+    var program      by remember { mutableStateOf("") }
+    var destination  by remember { mutableStateOf("") }
+    var people       by remember { mutableStateOf("") }
+    // Expandable deeper section
+    var showMore     by remember { mutableStateOf(false) }
+    var whatChanged  by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -199,31 +214,51 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(16.dp))
 
-        Text(
-            "Category",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // ---- Category ----
+        FormSectionLabel("Category")
         Spacer(Modifier.height(6.dp))
-
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(MilestoneCategory.entries) { cat ->
                 FilterChip(
                     selected = cat == category,
-                    onClick  = { category = cat },
-                    label    = { Text(cat.id.replaceFirstChar { it.uppercaseChar() }) },
+                    onClick  = {
+                        category = cat
+                        // Clear smart fields when switching category
+                        company = ""; role = ""; institution = ""; program = ""
+                        destination = ""; people = ""
+                    },
+                    label = { Text(cat.id.replaceFirstChar { it.uppercaseChar() }) },
                 )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = emoji,
-            onValueChange = { if (it.length <= 2) emoji = it },
-            label = { Text("Emoji (optional)") },
-            modifier = Modifier.fillMaxWidth(0.45f),
-            singleLine = true,
+        // ---- Significance ----
+        FormSectionLabel("Significance")
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MilestoneSignificance.entries.forEach { sig ->
+                FilterChip(
+                    selected = sig == significance,
+                    onClick  = { significance = sig },
+                    label    = { Text(sig.displayLabel()) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ---- Category-specific smart fields ----
+        MilestoneSmartFields(
+            category    = category,
+            company     = company,     onCompanyChange    = { company = it },
+            role        = role,        onRoleChange       = { role = it },
+            institution = institution, onInstitutionChange = { institution = it },
+            program     = program,     onProgramChange    = { program = it },
+            destination = destination, onDestinationChange = { destination = it },
+            people      = people,      onPeopleChange     = { people = it },
         )
 
         Spacer(Modifier.height(16.dp))
@@ -235,6 +270,41 @@ private fun MilestoneForm(
             modifier      = Modifier.fillMaxWidth(),
         )
 
+        Spacer(Modifier.height(12.dp))
+
+        // ---- Expandable deeper context ----
+        FilledTonalButton(
+            onClick = { showMore = !showMore },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                if (showMore) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+            )
+            Spacer(Modifier.size(6.dp))
+            Text(if (showMore) "Less detail" else "Add more context")
+        }
+
+        if (showMore) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = emoji,
+                onValueChange = { if (it.length <= 2) emoji = it },
+                label = { Text("Emoji (optional)") },
+                modifier = Modifier.fillMaxWidth(0.45f),
+                singleLine = true,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = whatChanged,
+                onValueChange = { whatChanged = it },
+                label = { Text("What changed after this?") },
+                placeholder = { Text("How did this shift things for you?") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 4,
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
 
         Button(
@@ -244,11 +314,19 @@ private fun MilestoneForm(
                 } else {
                     onSubmit(
                         CreateMilestoneUseCase.Params(
-                            title    = title.trim(),
-                            note     = note.trim().ifBlank { null },
-                            category = category,
-                            emoji    = emoji.trim().ifBlank { null },
-                            tags     = tags,
+                            title       = title.trim(),
+                            note        = note.trim().ifBlank { null },
+                            category    = category,
+                            significance = significance,
+                            emoji       = emoji.trim().ifBlank { null },
+                            tags        = tags,
+                            company     = company.trim().ifBlank { null },
+                            role        = role.trim().ifBlank { null },
+                            institution = institution.trim().ifBlank { null },
+                            program     = program.trim().ifBlank { null },
+                            destination = destination.trim().ifBlank { null },
+                            people      = people.trim().ifBlank { null },
+                            whatChanged = whatChanged.trim().ifBlank { null },
                         )
                     )
                 }
@@ -257,6 +335,71 @@ private fun MilestoneForm(
         ) {
             Text("Save Milestone")
         }
+    }
+}
+
+@Composable
+private fun FormSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun MilestoneSmartFields(
+    category: MilestoneCategory,
+    company: String,      onCompanyChange: (String) -> Unit,
+    role: String,         onRoleChange: (String) -> Unit,
+    institution: String,  onInstitutionChange: (String) -> Unit,
+    program: String,      onProgramChange: (String) -> Unit,
+    destination: String,  onDestinationChange: (String) -> Unit,
+    people: String,       onPeopleChange: (String) -> Unit,
+) {
+    when (category) {
+        MilestoneCategory.CAREER -> {
+            OutlinedTextField(
+                value = company, onValueChange = onCompanyChange,
+                label = { Text("Company (optional)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = role, onValueChange = onRoleChange,
+                label = { Text("Role (optional)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+        }
+        MilestoneCategory.EDUCATION -> {
+            OutlinedTextField(
+                value = institution, onValueChange = onInstitutionChange,
+                label = { Text("Institution (optional)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = program, onValueChange = onProgramChange,
+                label = { Text("Degree / Program (optional)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+        }
+        MilestoneCategory.TRAVEL -> {
+            OutlinedTextField(
+                value = destination, onValueChange = onDestinationChange,
+                label = { Text("Destination (optional)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+        }
+        MilestoneCategory.FAMILY -> {
+            OutlinedTextField(
+                value = people, onValueChange = onPeopleChange,
+                label = { Text("People involved (optional)") },
+                placeholder = { Text("e.g. Mom, Sarah, Jake") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+            )
+        }
+        else -> Unit
     }
 }
 

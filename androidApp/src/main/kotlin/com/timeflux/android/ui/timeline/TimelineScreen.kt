@@ -52,9 +52,13 @@ import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.add.AddEntryBottomSheet
 import com.timeflux.android.ui.cardEmoji
 import com.timeflux.android.ui.toDisplayDate
+import com.timeflux.android.ui.badgeColor
+import com.timeflux.android.ui.badgeLabel
 import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.TimelineEntry
+import com.timeflux.module.milestone.MilestonePayload
+import com.timeflux.module.milestone.MilestoneSignificance
 import com.timeflux.module.mood.MoodPayload
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -212,6 +216,20 @@ private fun payloadTags(payload: String): List<String> =
 @Composable
 private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifier) {
     val tags = remember(entry.payload) { payloadTags(entry.payload) }
+    val significanceBadge = remember(entry.moduleType, entry.payload) {
+        if (entry.moduleType != ModuleType.MILESTONE) null
+        else try {
+            AppJson.decodeFromString(MilestonePayload.serializer(), entry.payload)
+                .significance.badgeLabel()
+        } catch (_: Exception) { null }
+    }
+    val significanceColor = remember(entry.moduleType, entry.payload) {
+        if (entry.moduleType != ModuleType.MILESTONE) null
+        else try {
+            AppJson.decodeFromString(MilestonePayload.serializer(), entry.payload)
+                .significance.badgeColor()
+        } catch (_: Exception) { null }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -270,7 +288,7 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
 
                     Spacer(Modifier.width(8.dp))
 
-                    // Date + pin
+                    // Date + pin + significance
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = entry.createdAt.toDisplayDate(),
@@ -279,6 +297,20 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
                         )
                         if (entry.isPinned) {
                             Text("📌", style = MaterialTheme.typography.labelSmall)
+                        }
+                        if (significanceBadge != null && significanceColor != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = significanceColor.copy(alpha = 0.15f),
+                            ) {
+                                Text(
+                                    text = significanceBadge,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = significanceColor,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
                         }
                     }
                 }
