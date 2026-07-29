@@ -24,15 +24,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.timeflux.android.ui.accentColor
 import com.timeflux.android.ui.defaultEmoji
 import com.timeflux.module.AVAILABLE_MODULES
 import com.timeflux.module.LifeModule
 import com.timeflux.module.UPCOMING_MODULES
+import org.koin.androidx.compose.koinViewModel
 
 /**
  * The module picker. Lists the modules that are built today, plus a footer naming the ones still
@@ -43,7 +46,12 @@ import com.timeflux.module.UPCOMING_MODULES
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModulesScreen(onBack: () -> Unit) {
+fun ModulesScreen(
+    onBack: () -> Unit,
+    viewModel: ModulesViewModel = koinViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -74,17 +82,20 @@ fun ModulesScreen(onBack: () -> Unit) {
                 )
             }
 
-            items(AVAILABLE_MODULES, key = { it.type.name }) { module ->
-                ModuleRow(
-                    module = module,
-                    // Phase 3 replaces this with live registry state.
-                    isEnabled = module.enabledByDefault,
-                    onEnabledChange = {},
-                    interactive = false,
-                )
-            }
+            // Nothing is rendered until the registry has emitted, so a switch never shows the
+            // wrong position for a frame.
+            if (state.isLoaded) {
+                items(AVAILABLE_MODULES, key = { it.type.name }) { module ->
+                    ModuleRow(
+                        module = module,
+                        isEnabled = module.type in state.enabled,
+                        onEnabledChange = { viewModel.setEnabled(module.type, it) },
+                        interactive = true,
+                    )
+                }
 
-            item { UpcomingModulesFooter() }
+                item { UpcomingModulesFooter() }
+            }
         }
     }
 }

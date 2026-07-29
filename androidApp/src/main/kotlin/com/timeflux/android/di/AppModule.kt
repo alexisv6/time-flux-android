@@ -1,5 +1,6 @@
 package com.timeflux.android.di
 
+import com.timeflux.android.ui.modules.ModulesViewModel
 import com.timeflux.android.ui.timeline.TimelineViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -10,4 +11,5 @@ import org.koin.dsl.module
  */
 val appModule = module {
     viewModel { TimelineViewModel(get(), get(), get(), get(), get()) }
+    viewModel { ModulesViewModel(get()) }
 }

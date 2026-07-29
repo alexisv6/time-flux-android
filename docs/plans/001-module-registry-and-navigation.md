@@ -1,7 +1,7 @@
 # Plan 001 — Module registry and navigation
 
 **Spec:** `docs/specs/001-module-registry-and-navigation.md`
-**Status:** in progress — Phase 1 of 7 landed
+**Status:** in progress — Phases 1–3 of 7 landed
 **Created:** 2026-07-28
 **Revised:** 2026-07-28 — spec decisions closed; hide-entries and first-run phases added.
 
@@ -99,7 +99,7 @@ first on a Mac, or whenever the iOS app is started.
 
 ---
 
-### Phase 2 — Navigation host with a read-only Modules screen ⚠️ built 2026-07-28, unverified on device
+### Phase 2 — Navigation host with a read-only Modules screen ✅ landed 2026-07-28
 
 **Goal:** the app has two destinations and the user can reach the module list and come back.
 
@@ -131,14 +131,13 @@ first on a Mac, or whenever the iOS app is started.
 
 **Outcome:** builds clean — `navigation-compose` 2.8.5 with typed routes works against Kotlin 2.3.20
 and Compose BOM 2024.12.01, so the version-alignment risk is closed and the sealed-class fallback
-isn't needed. **The manual check has not been run** — no device or emulator was attached. Nothing
-here is confirmed to render or navigate; treat the screen, the app-bar icon and the back behaviour
-as unverified until someone runs it. The switches intentionally show `enabledByDefault` and do
-nothing until Phase 3.
+isn't needed. Verified on a Galaxy S24 Ultra: app-bar icon opens the picker, both rows and the
+footer render, back returns to the timeline. Switches show as checked-but-dimmed — the intended
+read-only state until Phase 3.
 
 ---
 
-### Phase 3 — Live enable/disable toggles
+### Phase 3 — Live enable/disable toggles ✅ landed 2026-07-28
 
 **Goal:** toggling a module writes through the registry and survives a restart.
 
@@ -156,6 +155,17 @@ nothing until Phase 3.
   confirm it sticks.
 
 **Done when:** toggle state persists across a cold start.
+
+**Outcome:** verified on a Galaxy S24 Ultra. Disabling Mood wrote `module.enabled.mood=false` to
+`shared_prefs/time_flux_settings.xml`; after `am force-stop` and relaunch the switch was still off.
+Re-enabling wrote `module.enabled.mood=true` **and** `module.hidden.mood=false` — the D4 invariant
+firing on a real device, not just in tests. Note when reading prefs during testing:
+`SharedPreferencesSettings` uses `apply()`, so the XML on disk can lag the in-memory state by a
+moment.
+
+Added `ModulesUiState.isLoaded`, which wasn't in the plan: `stateIn` needs an initial value, and an
+empty enabled-set would render every switch off for one frame before flipping. The screen renders
+no rows until the registry's first emission instead.
 
 ---
 

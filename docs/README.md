@@ -19,7 +19,7 @@ Two kinds of document live here: **context** (durable, describes the world) and 
 
 | # | Feature | Spec | Plan | Status |
 |---|---|---|---|---|
-| 001 | Module registry + navigation | [spec](specs/001-module-registry-and-navigation.md) | [plan](plans/001-module-registry-and-navigation.md) | In progress — phase 1 of 7 |
+| 001 | Module registry + navigation | [spec](specs/001-module-registry-and-navigation.md) | [plan](plans/001-module-registry-and-navigation.md) | In progress — phases 1–3 of 7 |
 
 ---
 
