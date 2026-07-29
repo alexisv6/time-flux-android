@@ -15,6 +15,15 @@ Two kinds of document live here: **context** (durable, describes the world) and 
 | [data-storage-and-query-research.md](data-storage-and-query-research.md) | SQLDelight / SQLite / FTS5 / query-shape research. |
 | [storage-sync-archiving-research.md](storage-sync-archiving-research.md) | v2/v3 sync, encryption, tiered archiving research. |
 
+## Research
+
+Open questions being investigated before they're ready to spec — see
+[research/README.md](research/README.md) for the queue.
+
+| Doc | Question | Status |
+|---|---|---|
+| [user-profile-and-places.md](research/user-profile-and-places.md) | How the app builds an understanding of the user over time, and how places/people become referenceable entities | Pending |
+
 ## Work
 
 | # | Feature | Spec | Plan | Status |
