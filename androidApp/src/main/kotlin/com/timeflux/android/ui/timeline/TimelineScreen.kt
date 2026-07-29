@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -74,7 +75,10 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
+fun TimelineScreen(
+    onOpenModules: () -> Unit,
+    viewModel: TimelineViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddSheet    by remember { mutableStateOf(false) }
@@ -112,6 +116,9 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
                             tint = if (state.filter.isActive) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurface,
                         )
+                    }
+                    IconButton(onClick = onOpenModules) {
+                        Icon(Icons.Default.Widgets, contentDescription = "Modules")
                     }
                 },
             )

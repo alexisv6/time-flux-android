@@ -99,7 +99,7 @@ first on a Mac, or whenever the iOS app is started.
 
 ---
 
-### Phase 2 — Navigation host with a read-only Modules screen
+### Phase 2 — Navigation host with a read-only Modules screen ⚠️ built 2026-07-28, unverified on device
 
 **Goal:** the app has two destinations and the user can reach the module list and come back.
 
@@ -128,6 +128,13 @@ first on a Mac, or whenever the iOS app is started.
   system back returns to the timeline with scroll position preserved.
 
 **Done when:** both destinations are reachable and back works.
+
+**Outcome:** builds clean — `navigation-compose` 2.8.5 with typed routes works against Kotlin 2.3.20
+and Compose BOM 2024.12.01, so the version-alignment risk is closed and the sealed-class fallback
+isn't needed. **The manual check has not been run** — no device or emulator was attached. Nothing
+here is confirmed to render or navigate; treat the screen, the app-bar icon and the back behaviour
+as unverified until someone runs it. The switches intentionally show `enabledByDefault` and do
+nothing until Phase 3.
 
 ---
 

@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.compose.icons.core)
     implementation(libs.compose.icons.extended)
     implementation(libs.activity.compose)
+    implementation(libs.navigation.compose)
     debugImplementation(libs.compose.ui.tooling)
 
     // Lifecycle

@@ -16,6 +16,7 @@ skie                    = "0.10.11"
 # Android
 compose-bom             = "2024.12.01"
 activity-compose        = "1.9.3"
+navigation              = "2.8.5"
 core-ktx                = "1.15.0"
 androidx-sqlite         = "2.5.0"
 requery-sqlite          = "3.49.0"
@@ -83,4 +84,5 @@ compose-foundation          = { group = "androidx.compose.foundation", name = "f
 compose-icons-core          = { group = "androidx.compose.material", name = "material-icons-core" }
 compose-icons-extended      = { group = "androidx.compose.material", name = "material-icons-extended" }
 activity-compose            = { group = "androidx.activity", name = "activity-compose",              version.ref = "activity-compose" }
+navigation-compose          = { group = "androidx.navigation", name = "navigation-compose",          version.ref = "navigation" }
 core-ktx                    = { group = "androidx.core", name = "core-ktx",                          version.ref = "core-ktx" }
