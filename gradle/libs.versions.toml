@@ -34,6 +34,7 @@ skie                    = { id = "co.touchlab.skie",                         ver
 kotlinx-coroutines-core     = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core",    version.ref = "coroutines" }
 kotlinx-serialization-json  = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-datetime            = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",           version.ref = "datetime" }
+kotlinx-coroutines-test     = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test",    version.ref = "coroutines" }
 
 # SQLDelight
 sqldelight-runtime          = { group = "app.cash.sqldelight", name = "runtime",                      version.ref = "sqldelight" }
@@ -67,6 +68,7 @@ ktor-content-negotiation    = { group = "io.ktor", name = "ktor-client-content-n
 # Multiplatform Settings
 multiplatform-settings      = { group = "com.russhwolf", name = "multiplatform-settings",             version.ref = "multiplatform-settings" }
 multiplatform-settings-coroutines = { group = "com.russhwolf", name = "multiplatform-settings-coroutines", version.ref = "multiplatform-settings" }
+multiplatform-settings-test = { group = "com.russhwolf", name = "multiplatform-settings-test",             version.ref = "multiplatform-settings" }
 
 # Kermit Logging
 kermit                      = { group = "co.touchlab", name = "kermit",                               version.ref = "kermit" }

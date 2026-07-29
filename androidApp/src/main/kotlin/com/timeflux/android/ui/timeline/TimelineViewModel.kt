@@ -96,7 +96,8 @@ class TimelineViewModel(
     fun updateMilestone(params: UpdateMilestoneUseCase.Params) {
         viewModelScope.launch {
             when (val result = updateMilestone(params)) {
-                is Outcome.Success                -> refreshEntry(params.id)
+                // Outcome<Unit>: the type argument isn't inferable in an `is` check, hence <*>
+                is Outcome.Success<*>             -> refreshEntry(params.id)
                 is Outcome.Failure.ValidationError -> _state.update { it.copy(userMessage = result.message) }
                 is Outcome.Failure                -> _state.update { it.copy(userMessage = "Failed to update milestone.") }
             }
@@ -106,7 +107,7 @@ class TimelineViewModel(
     fun updateMoodEntry(params: UpdateMoodEntryUseCase.Params) {
         viewModelScope.launch {
             when (val result = updateMoodEntry(params)) {
-                is Outcome.Success                -> refreshEntry(params.id)
+                is Outcome.Success<*>             -> refreshEntry(params.id)
                 is Outcome.Failure.ValidationError -> _state.update { it.copy(userMessage = result.message) }
                 is Outcome.Failure                -> _state.update { it.copy(userMessage = "Failed to update mood entry.") }
             }

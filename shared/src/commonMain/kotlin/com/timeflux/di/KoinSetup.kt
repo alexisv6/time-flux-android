@@ -5,6 +5,8 @@ import com.timeflux.data.json.AppJson
 import com.timeflux.data.repository.TimelineRepositoryImpl
 import com.timeflux.db.TimeFluxDatabase
 import com.timeflux.domain.repository.TimelineRepository
+import com.timeflux.module.ModuleRegistry
+import com.timeflux.module.SettingsModuleRegistry
 import com.timeflux.module.milestone.CreateMilestoneUseCase
 import com.timeflux.module.milestone.UpdateMilestoneUseCase
 import com.timeflux.module.mood.CreateMoodEntryUseCase
@@ -39,6 +41,9 @@ private fun sharedModule(): List<Module> = listOf(
 
         // Shared JSON codec — one configured instance for all payload encode/decode
         single { AppJson }
+
+        // Module enable/hide state — key-value backed, never the database (principle 1)
+        single<ModuleRegistry> { SettingsModuleRegistry(get()) }
 
         // Module use cases — factory so each caller gets its own (stateless, cheap)
         factory { CreateMilestoneUseCase(get(), get()) }

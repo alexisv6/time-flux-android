@@ -46,6 +46,8 @@ Research docs (`kmp-setup-research.md`, `data-storage-and-query-research.md`,
   module (`module/<name>/<Name>Payload.kt`). Adding a module must not require an `ALTER TABLE` on
   `timeline_entries`.
 - **Reactive reads return `Flow`; one-shot reads and all writes are `suspend`.**
+- A `when` over an `Outcome<Unit>` needs `is Outcome.Success<*>` — the type argument isn't inferable
+  through `Outcome`'s covariance, unlike `Outcome<String>` where plain `is Outcome.Success` compiles.
 - Time columns are epoch **milliseconds UTC**. `month_day` / `year_month` / `year_week` are written
   by the repository on insert so date filters stay index-sargable — keep them in sync on any write.
 - Schema changes are **numbered SQLDelight migrations**, verified at build time
