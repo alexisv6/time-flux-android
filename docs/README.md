@@ -23,6 +23,7 @@ Open questions being investigated before they're ready to spec — see
 | Doc | Question | Status |
 |---|---|---|
 | [user-profile-and-places.md](research/user-profile-and-places.md) | How the app builds an understanding of the user over time, and how places/people become referenceable entities | Pending |
+| [conversational-capture.md](research/conversational-capture.md) | Talking to the app instead of typing — interaction model, extraction into entries, and trust | Pending |
 
 ## Work
 

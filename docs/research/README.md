@@ -12,6 +12,7 @@ and the research doc is linked from it.
 | Doc | Question | Status |
 |---|---|---|
 | [user-profile-and-places.md](user-profile-and-places.md) | How should the app build an understanding of the user over time, and how do places/people become referenceable things rather than loose text? | **Pending — not started** |
+| [conversational-capture.md](conversational-capture.md) | Can people talk to the app and end up with real timeline entries — conversational or listening, how much UI guidance, and how trust is earned? | **Pending — not started** |
 
 ## Also research, filed at `docs/` root
 
