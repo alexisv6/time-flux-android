@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.timeflux.domain.model.Outcome
+import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.domain.repository.TimelineRepository
 import com.timeflux.module.milestone.CreateMilestoneUseCase
+import com.timeflux.module.milestone.UpdateMilestoneUseCase
 import com.timeflux.module.mood.CreateMoodEntryUseCase
+import com.timeflux.module.mood.UpdateMoodEntryUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,6 +23,8 @@ class TimelineViewModel(
     private val repository: TimelineRepository,
     private val createMilestone: CreateMilestoneUseCase,
     private val createMoodEntry: CreateMoodEntryUseCase,
+    private val updateMilestone: UpdateMilestoneUseCase,
+    private val updateMoodEntry: UpdateMoodEntryUseCase,
 ) : ViewModel() {
 
     private val log = Logger.withTag("TimelineVM")
@@ -78,6 +83,34 @@ class TimelineViewModel(
 
     fun setFilter(filter: TimelineFilter) {
         _state.update { it.copy(filter = filter) }
+    }
+
+    fun openEntry(entry: TimelineEntry) {
+        _state.update { it.copy(selectedEntry = entry) }
+    }
+
+    fun closeEntry() {
+        _state.update { it.copy(selectedEntry = null) }
+    }
+
+    fun updateMilestone(params: UpdateMilestoneUseCase.Params) {
+        viewModelScope.launch {
+            when (val result = updateMilestone(params)) {
+                is Outcome.Success                -> refreshEntry(params.id)
+                is Outcome.Failure.ValidationError -> _state.update { it.copy(userMessage = result.message) }
+                is Outcome.Failure                -> _state.update { it.copy(userMessage = "Failed to update milestone.") }
+            }
+        }
+    }
+
+    fun updateMoodEntry(params: UpdateMoodEntryUseCase.Params) {
+        viewModelScope.launch {
+            when (val result = updateMoodEntry(params)) {
+                is Outcome.Success                -> refreshEntry(params.id)
+                is Outcome.Failure.ValidationError -> _state.update { it.copy(userMessage = result.message) }
+                is Outcome.Failure                -> _state.update { it.copy(userMessage = "Failed to update mood entry.") }
+            }
+        }
     }
 
     fun addMilestone(params: CreateMilestoneUseCase.Params) {
@@ -153,6 +186,27 @@ class TimelineViewModel(
                 log.w { "prependNewEntry getById failed for $id, falling back to reload" }
                 loadInitialPage()
                 _entryAdded.emit(Unit)
+            }
+        }
+    }
+
+    /**
+     * Re-fetches a single entry after an update and replaces it in-place in the list.
+     * Also clears [TimelineUiState.selectedEntry] to dismiss the detail sheet.
+     */
+    private suspend fun refreshEntry(id: String) {
+        loadAllTags()
+        when (val result = repository.getById(id)) {
+            is Outcome.Success -> _state.update { s ->
+                s.copy(
+                    entries = s.entries.map { if (it.id == id) result.data else it },
+                    selectedEntry = null,
+                )
+            }
+            is Outcome.Failure -> {
+                log.w { "refreshEntry getById failed for $id, falling back to reload" }
+                loadInitialPage()
+                _state.update { it.copy(selectedEntry = null) }
             }
         }
     }

@@ -59,6 +59,8 @@ data class MilestonePayload(
     val people: String? = null,   // free text, e.g. "Mom, Sarah, Jake"
     // ---- Reflection ----
     val whatChanged: String? = null,
+    /** False for entries captured quickly — signals the user intended to come back and add detail. */
+    val isEnriched: Boolean = true,
 )
 
 /** Decode this entry's JSON payload into a typed [MilestonePayload]. */

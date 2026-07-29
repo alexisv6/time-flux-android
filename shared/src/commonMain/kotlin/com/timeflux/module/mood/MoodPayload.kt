@@ -26,6 +26,8 @@ data class MoodPayload(
     val factors: List<String> = emptyList(),
     /** Denormalized tag names for card display; entry_tags is the canonical filter index. */
     val tags: List<String> = emptyList(),
+    /** False for entries captured quickly — signals the user intended to come back and add detail. */
+    val isEnriched: Boolean = true,
 )
 
 /** Decode this entry's JSON payload into a typed [MoodPayload]. */

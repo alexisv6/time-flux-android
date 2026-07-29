@@ -53,6 +53,7 @@ class CreateMilestoneUseCase(
         val locationLng: Double? = null,
         val isPinned: Boolean = false,
         val tags: List<String> = emptyList(),
+        val isEnriched: Boolean = true,
         // Smart fields — populate based on category
         val company: String? = null,
         val role: String? = null,
@@ -82,6 +83,7 @@ class CreateMilestoneUseCase(
                 emoji        = params.emoji,
                 color        = params.color,
                 tags         = params.tags,
+                isEnriched   = params.isEnriched,
                 company      = params.company,
                 role         = params.role,
                 institution  = params.institution,

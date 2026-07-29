@@ -47,6 +47,7 @@ class CreateMoodEntryUseCase(
         val factors: List<String> = emptyList(),
         val createdAt: Instant = Clock.System.now(),
         val tags: List<String> = emptyList(),
+        val isEnriched: Boolean = true,
     )
 
     suspend operator fun invoke(params: Params): Outcome<String> {
@@ -73,12 +74,13 @@ class CreateMoodEntryUseCase(
         val payloadJson = json.encodeToString(
             MoodPayload.serializer(),
             MoodPayload(
-                score   = params.score,
-                energy  = params.energy,
-                emotion = params.emotion,
-                emotions = params.emotions,
-                factors  = params.factors,
-                tags    = params.tags,
+                score      = params.score,
+                energy     = params.energy,
+                emotion    = params.emotion,
+                emotions   = params.emotions,
+                factors    = params.factors,
+                tags       = params.tags,
+                isEnriched = params.isEnriched,
             ),
         )
 

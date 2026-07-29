@@ -79,6 +79,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddSheet    by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    val selectedEntry = state.selectedEntry
 
     val displayEntries = remember(state.entries, state.filter) {
         if (state.filter.isActive) state.entries.filter { state.filter.matches(it) }
@@ -138,6 +139,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
                 isLoadingMore = state.isLoadingMore,
                 hasMore       = state.hasMore,
                 onLoadMore    = viewModel::loadNextPage,
+                onEntryClick  = viewModel::openEntry,
             )
         }
     }
@@ -157,6 +159,16 @@ fun TimelineScreen(viewModel: TimelineViewModel = koinViewModel()) {
             availableTags = state.availableTags,
             onApply       = { viewModel.setFilter(it) },
             onDismiss     = { showFilterSheet = false },
+        )
+    }
+
+    if (selectedEntry != null) {
+        EntryDetailBottomSheet(
+            entry             = selectedEntry,
+            availableTags     = state.availableTags,
+            onUpdateMilestone = viewModel::updateMilestone,
+            onUpdateMoodEntry = viewModel::updateMoodEntry,
+            onDismiss         = viewModel::closeEntry,
         )
     }
 }
@@ -220,6 +232,7 @@ private fun TimelineContent(
     isLoadingMore: Boolean,
     hasMore: Boolean,
     onLoadMore: () -> Unit,
+    onEntryClick: (TimelineEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -233,6 +246,7 @@ private fun TimelineContent(
             isLoadingMore = isLoadingMore,
             hasMore       = hasMore,
             onLoadMore    = onLoadMore,
+            onEntryClick  = onEntryClick,
             modifier      = modifier,
         )
     }
@@ -287,6 +301,7 @@ private fun TimelineList(
     isLoadingMore: Boolean,
     hasMore: Boolean,
     onLoadMore: () -> Unit,
+    onEntryClick: (TimelineEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -320,7 +335,7 @@ private fun TimelineList(
         }
 
         items(entries, key = { it.id }) { entry ->
-            TimelineEntryCard(entry)
+            TimelineEntryCard(entry, onClick = { onEntryClick(entry) })
         }
 
         if (isLoadingMore) {
@@ -350,7 +365,11 @@ private fun payloadTags(payload: String): List<String> =
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifier) {
+private fun TimelineEntryCard(
+    entry: TimelineEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val tags = remember(entry.payload) { payloadTags(entry.payload) }
     val significanceBadge = remember(entry.moduleType, entry.payload) {
         if (entry.moduleType != ModuleType.MILESTONE) null
@@ -366,8 +385,16 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
                 .significance.badgeColor()
         } catch (_: Exception) { null }
     }
+    val isEnriched = remember(entry.payload) {
+        try {
+            AppJson.parseToJsonElement(entry.payload)
+                .jsonObject["isEnriched"]
+                ?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: true
+        } catch (_: Exception) { true }
+    }
 
     Card(
+        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
@@ -424,7 +451,7 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
 
                     Spacer(Modifier.width(8.dp))
 
-                    // Date + pin + significance
+                    // Date + pin + significance + draft indicator
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = entry.createdAt.toDisplayDate(),
@@ -433,6 +460,9 @@ private fun TimelineEntryCard(entry: TimelineEntry, modifier: Modifier = Modifie
                         )
                         if (entry.isPinned) {
                             Text("📌", style = MaterialTheme.typography.labelSmall)
+                        }
+                        if (!isEnriched) {
+                            Text("✏️", style = MaterialTheme.typography.labelSmall)
                         }
                         if (significanceBadge != null && significanceColor != null) {
                             Spacer(Modifier.height(4.dp))

@@ -6,7 +6,9 @@ import com.timeflux.data.repository.TimelineRepositoryImpl
 import com.timeflux.db.TimeFluxDatabase
 import com.timeflux.domain.repository.TimelineRepository
 import com.timeflux.module.milestone.CreateMilestoneUseCase
+import com.timeflux.module.milestone.UpdateMilestoneUseCase
 import com.timeflux.module.mood.CreateMoodEntryUseCase
+import com.timeflux.module.mood.UpdateMoodEntryUseCase
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -40,6 +42,8 @@ private fun sharedModule(): List<Module> = listOf(
 
         // Module use cases — factory so each caller gets its own (stateless, cheap)
         factory { CreateMilestoneUseCase(get(), get()) }
+        factory { UpdateMilestoneUseCase(get(), get()) }
         factory { CreateMoodEntryUseCase(get(), get()) }
+        factory { UpdateMoodEntryUseCase(get(), get()) }
     },
 )

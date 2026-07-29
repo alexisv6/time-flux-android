@@ -1,4 +1,4 @@
-package com.timeflux.android.ui.add
+package com.timeflux.android.ui.timeline
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -16,30 +14,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -51,56 +40,55 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.timeflux.android.ui.EMOTION_VOCABULARY
 import com.timeflux.android.ui.MOOD_FACTORS
-import com.timeflux.android.ui.accentColor
-import com.timeflux.android.ui.defaultEmoji
+import com.timeflux.android.ui.add.TagInputField
 import com.timeflux.android.ui.displayLabel
-import com.timeflux.android.ui.displayName
 import com.timeflux.android.ui.energyScoreEmoji
 import com.timeflux.android.ui.moodScoreEmoji
+import com.timeflux.data.json.AppJson
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
-import com.timeflux.module.milestone.CreateMilestoneUseCase
+import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.module.milestone.MilestoneCategory
+import com.timeflux.module.milestone.MilestonePayload
 import com.timeflux.module.milestone.MilestoneSignificance
-import com.timeflux.module.mood.CreateMoodEntryUseCase
+import com.timeflux.module.milestone.UpdateMilestoneUseCase
+import com.timeflux.module.mood.MoodPayload
+import com.timeflux.module.mood.UpdateMoodEntryUseCase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEntryBottomSheet(
+fun EntryDetailBottomSheet(
+    entry: TimelineEntry,
+    availableTags: List<Tag>,
+    onUpdateMilestone: (UpdateMilestoneUseCase.Params) -> Unit,
+    onUpdateMoodEntry: (UpdateMoodEntryUseCase.Params) -> Unit,
     onDismiss: () -> Unit,
-    onSubmitMilestone: (CreateMilestoneUseCase.Params) -> Unit,
-    onSubmitMood: (CreateMoodEntryUseCase.Params) -> Unit,
-    availableTags: List<Tag> = emptyList(),
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var selectedType by remember { mutableStateOf<ModuleType?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
-        when (val type = selectedType) {
-            null -> ModuleTypeSelector(onTypeSelected = { selectedType = it })
-
-            ModuleType.MILESTONE -> MilestoneForm(
+        when (entry.moduleType) {
+            ModuleType.MILESTONE -> EditMilestoneForm(
+                entry         = entry,
                 availableTags = availableTags,
-                onSubmit      = onSubmitMilestone,
-                onBack        = { selectedType = null },
+                onSubmit      = onUpdateMilestone,
+                onDismiss     = onDismiss,
             )
-
-            ModuleType.MOOD -> MoodForm(
+            ModuleType.MOOD -> EditMoodForm(
+                entry         = entry,
                 availableTags = availableTags,
-                onSubmit      = onSubmitMood,
-                onBack        = { selectedType = null },
+                onSubmit      = onUpdateMoodEntry,
+                onDismiss     = onDismiss,
             )
-
             else -> {
                 Text(
-                    text = "${type.displayName()} module coming soon!",
+                    text = "Editing this entry type is not yet supported.",
                     modifier = Modifier.padding(32.dp).fillMaxWidth(),
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -110,75 +98,55 @@ fun AddEntryBottomSheet(
     }
 }
 
-// ---- Step 1: module type selector ----------------------------------------------------------
+// ---- Edit Milestone form -------------------------------------------------------------------
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ModuleTypeSelector(onTypeSelected: (ModuleType) -> Unit) {
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 32.dp),
-    ) {
-        Text(
-            text = "Add to Timeline",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ModuleCard(ModuleType.MILESTONE, Modifier.weight(1f)) { onTypeSelected(ModuleType.MILESTONE) }
-            ModuleCard(ModuleType.MOOD,      Modifier.weight(1f)) { onTypeSelected(ModuleType.MOOD) }
-        }
-    }
-}
-
-@Composable
-private fun ModuleCard(type: ModuleType, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.aspectRatio(1f),
-        colors = CardDefaults.cardColors(containerColor = type.accentColor().copy(alpha = 0.12f)),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(type.defaultEmoji(), style = MaterialTheme.typography.displaySmall)
-            Spacer(Modifier.height(8.dp))
-            Text(type.displayName(), style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
-
-// ---- Step 2a: Milestone form ---------------------------------------------------------------
-
-@Composable
-private fun MilestoneForm(
+private fun EditMilestoneForm(
+    entry: TimelineEntry,
     availableTags: List<Tag>,
-    onSubmit: (CreateMilestoneUseCase.Params) -> Unit,
-    onBack: () -> Unit,
+    onSubmit: (UpdateMilestoneUseCase.Params) -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    var title        by remember { mutableStateOf("") }
-    var note         by remember { mutableStateOf("") }
-    var category     by remember { mutableStateOf(MilestoneCategory.PERSONAL) }
-    var significance by remember { mutableStateOf(MilestoneSignificance.NOTABLE) }
-    var emoji        by remember { mutableStateOf("") }
-    var tags         by remember { mutableStateOf(emptyList<String>()) }
+    val payload = remember(entry.payload) {
+        try { AppJson.decodeFromString(MilestonePayload.serializer(), entry.payload) }
+        catch (_: Exception) { MilestonePayload() }
+    }
+
+    var title        by remember { mutableStateOf(entry.title ?: "") }
+    var note         by remember { mutableStateOf(entry.note ?: "") }
+    var category     by remember { mutableStateOf(payload.category) }
+    var significance by remember { mutableStateOf(payload.significance) }
+    var emoji        by remember { mutableStateOf(payload.emoji ?: "") }
+    var tags         by remember { mutableStateOf(payload.tags) }
     var titleError   by remember { mutableStateOf<String?>(null) }
-    // Smart fields
-    var company      by remember { mutableStateOf("") }
-    var role         by remember { mutableStateOf("") }
-    var institution  by remember { mutableStateOf("") }
-    var program      by remember { mutableStateOf("") }
-    var destination  by remember { mutableStateOf("") }
-    var people       by remember { mutableStateOf("") }
-    // Expandable deeper section
-    var showMore     by remember { mutableStateOf(false) }
-    var whatChanged  by remember { mutableStateOf("") }
+    var company      by remember { mutableStateOf(payload.company ?: "") }
+    var role         by remember { mutableStateOf(payload.role ?: "") }
+    var institution  by remember { mutableStateOf(payload.institution ?: "") }
+    var program      by remember { mutableStateOf(payload.program ?: "") }
+    var destination  by remember { mutableStateOf(payload.destination ?: "") }
+    var people       by remember { mutableStateOf(payload.people ?: "") }
+    var whatChanged  by remember { mutableStateOf(payload.whatChanged ?: "") }
+    var showMore     by remember { mutableStateOf(emoji.isNotBlank() || whatChanged.isNotBlank()) }
+
+    fun buildParams(isEnriched: Boolean) = UpdateMilestoneUseCase.Params(
+        id          = entry.id,
+        title       = title.trim(),
+        note        = note.trim().ifBlank { null },
+        category    = category,
+        significance = significance,
+        emoji       = emoji.trim().ifBlank { null },
+        isPinned    = entry.isPinned,
+        tags        = tags,
+        isEnriched  = isEnriched,
+        company     = company.trim().ifBlank { null },
+        role        = role.trim().ifBlank { null },
+        institution = institution.trim().ifBlank { null },
+        program     = program.trim().ifBlank { null },
+        destination = destination.trim().ifBlank { null },
+        people      = people.trim().ifBlank { null },
+        whatChanged = whatChanged.trim().ifBlank { null },
+    )
 
     Column(
         modifier = Modifier
@@ -187,11 +155,24 @@ private fun MilestoneForm(
             .padding(bottom = 16.dp)
             .imePadding(),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Edit Milestone", style = MaterialTheme.typography.titleLarge)
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
             }
-            Text("New Milestone", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (!payload.isEnriched) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "This entry was saved as a draft — add more detail below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -218,8 +199,7 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(16.dp))
 
-        // ---- Category ----
-        FormSectionLabel("Category")
+        DetailSectionLabel("Category")
         Spacer(Modifier.height(6.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(MilestoneCategory.entries) { cat ->
@@ -227,7 +207,6 @@ private fun MilestoneForm(
                     selected = cat == category,
                     onClick  = {
                         category = cat
-                        // Clear smart fields when switching category
                         company = ""; role = ""; institution = ""; program = ""
                         destination = ""; people = ""
                     },
@@ -238,8 +217,7 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(16.dp))
 
-        // ---- Significance ----
-        FormSectionLabel("Significance")
+        DetailSectionLabel("Significance")
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MilestoneSignificance.entries.forEach { sig ->
@@ -254,15 +232,14 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(16.dp))
 
-        // ---- Category-specific smart fields ----
-        MilestoneSmartFields(
+        MilestoneSmartFieldsDetail(
             category    = category,
-            company     = company,     onCompanyChange    = { company = it },
-            role        = role,        onRoleChange       = { role = it },
+            company     = company,     onCompanyChange     = { company = it },
+            role        = role,        onRoleChange        = { role = it },
             institution = institution, onInstitutionChange = { institution = it },
-            program     = program,     onProgramChange    = { program = it },
+            program     = program,     onProgramChange     = { program = it },
             destination = destination, onDestinationChange = { destination = it },
-            people      = people,      onPeopleChange     = { people = it },
+            people      = people,      onPeopleChange      = { people = it },
         )
 
         Spacer(Modifier.height(16.dp))
@@ -276,7 +253,6 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(12.dp))
 
-        // ---- Expandable deeper context ----
         FilledTonalButton(
             onClick = { showMore = !showMore },
             modifier = Modifier.fillMaxWidth(),
@@ -311,31 +287,14 @@ private fun MilestoneForm(
 
         Spacer(Modifier.height(24.dp))
 
-        fun buildMilestoneParams(isEnriched: Boolean) = CreateMilestoneUseCase.Params(
-            title       = title.trim(),
-            note        = note.trim().ifBlank { null },
-            category    = category,
-            significance = significance,
-            emoji       = emoji.trim().ifBlank { null },
-            tags        = tags,
-            isEnriched  = isEnriched,
-            company     = company.trim().ifBlank { null },
-            role        = role.trim().ifBlank { null },
-            institution = institution.trim().ifBlank { null },
-            program     = program.trim().ifBlank { null },
-            destination = destination.trim().ifBlank { null },
-            people      = people.trim().ifBlank { null },
-            whatChanged = whatChanged.trim().ifBlank { null },
-        )
-
         Button(
             onClick = {
                 if (title.isBlank()) titleError = "Title is required"
-                else onSubmit(buildMilestoneParams(isEnriched = true))
+                else onSubmit(buildParams(isEnriched = true))
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Save Milestone")
+            Text("Save Changes")
         }
 
         Spacer(Modifier.height(8.dp))
@@ -343,7 +302,7 @@ private fun MilestoneForm(
         OutlinedButton(
             onClick = {
                 if (title.isBlank()) titleError = "Title is required"
-                else onSubmit(buildMilestoneParams(isEnriched = false))
+                else onSubmit(buildParams(isEnriched = false))
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.outlinedButtonColors(
@@ -352,27 +311,20 @@ private fun MilestoneForm(
         ) {
             Text("Save — add more later")
         }
+
+        Spacer(Modifier.height(8.dp))
     }
 }
 
 @Composable
-private fun FormSectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun MilestoneSmartFields(
+private fun MilestoneSmartFieldsDetail(
     category: MilestoneCategory,
-    company: String,      onCompanyChange: (String) -> Unit,
-    role: String,         onRoleChange: (String) -> Unit,
-    institution: String,  onInstitutionChange: (String) -> Unit,
-    program: String,      onProgramChange: (String) -> Unit,
-    destination: String,  onDestinationChange: (String) -> Unit,
-    people: String,       onPeopleChange: (String) -> Unit,
+    company: String,     onCompanyChange: (String) -> Unit,
+    role: String,        onRoleChange: (String) -> Unit,
+    institution: String, onInstitutionChange: (String) -> Unit,
+    program: String,     onProgramChange: (String) -> Unit,
+    destination: String, onDestinationChange: (String) -> Unit,
+    people: String,      onPeopleChange: (String) -> Unit,
 ) {
     when (category) {
         MilestoneCategory.CAREER -> {
@@ -420,21 +372,39 @@ private fun MilestoneSmartFields(
     }
 }
 
-// ---- Step 2b: Mood form --------------------------------------------------------------------
+// ---- Edit Mood form -----------------------------------------------------------------------
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MoodForm(
+private fun EditMoodForm(
+    entry: TimelineEntry,
     availableTags: List<Tag>,
-    onSubmit: (CreateMoodEntryUseCase.Params) -> Unit,
-    onBack: () -> Unit,
+    onSubmit: (UpdateMoodEntryUseCase.Params) -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    var score    by remember { mutableIntStateOf(3) }
-    var energy   by remember { mutableStateOf<Int?>(null) }
-    var emotions by remember { mutableStateOf(emptySet<String>()) }
-    var factors  by remember { mutableStateOf(emptySet<String>()) }
-    var note     by remember { mutableStateOf("") }
-    var tags     by remember { mutableStateOf(emptyList<String>()) }
+    val payload = remember(entry.payload) {
+        try { AppJson.decodeFromString(MoodPayload.serializer(), entry.payload) }
+        catch (_: Exception) { MoodPayload(score = 3) }
+    }
+
+    var score    by remember { mutableIntStateOf(payload.score) }
+    var energy   by remember { mutableStateOf(payload.energy) }
+    var emotions by remember { mutableStateOf(payload.emotions.toSet()) }
+    var factors  by remember { mutableStateOf(payload.factors.toSet()) }
+    var note     by remember { mutableStateOf(entry.note ?: "") }
+    var tags     by remember { mutableStateOf(payload.tags) }
+
+    fun buildParams(isEnriched: Boolean) = UpdateMoodEntryUseCase.Params(
+        id         = entry.id,
+        score      = score,
+        note       = note.trim().ifBlank { null },
+        energy     = energy,
+        emotion    = payload.emotion,
+        emotions   = emotions.toList(),
+        factors    = factors.toList(),
+        tags       = tags,
+        isEnriched = isEnriched,
+    )
 
     Column(
         modifier = Modifier
@@ -443,17 +413,29 @@ private fun MoodForm(
             .padding(bottom = 16.dp)
             .imePadding(),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Edit Check-in", style = MaterialTheme.typography.titleLarge)
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
             }
-            Text("Mood Check-in", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (!payload.isEnriched) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "This entry was saved as a draft — add more detail below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // ---- Mood score ----
-        FormSectionLabel("How are you feeling?")
+        DetailSectionLabel("How were you feeling?")
         Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -478,8 +460,7 @@ private fun MoodForm(
 
         Spacer(Modifier.height(20.dp))
 
-        // ---- Energy level ----
-        FormSectionLabel("Energy level (optional)")
+        DetailSectionLabel("Energy level (optional)")
         Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -504,8 +485,7 @@ private fun MoodForm(
 
         Spacer(Modifier.height(20.dp))
 
-        // ---- Emotion vocabulary ----
-        FormSectionLabel("How would you describe it? (optional)")
+        DetailSectionLabel("How would you describe it? (optional)")
         Spacer(Modifier.height(8.dp))
         EMOTION_VOCABULARY.forEach { (groupLabel, words) ->
             Text(
@@ -522,10 +502,8 @@ private fun MoodForm(
                     val selected = word in emotions
                     FilterChip(
                         selected = selected,
-                        onClick  = {
-                            emotions = if (selected) emotions - word else emotions + word
-                        },
-                        label = { Text(word) },
+                        onClick  = { emotions = if (selected) emotions - word else emotions + word },
+                        label    = { Text(word) },
                     )
                 }
             }
@@ -533,8 +511,7 @@ private fun MoodForm(
 
         Spacer(Modifier.height(4.dp))
 
-        // ---- Factors ----
-        FormSectionLabel("What influenced it? (optional)")
+        DetailSectionLabel("What influenced it? (optional)")
         Spacer(Modifier.height(8.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -544,10 +521,8 @@ private fun MoodForm(
                 val selected = name in factors
                 FilterChip(
                     selected = selected,
-                    onClick  = {
-                        factors = if (selected) factors - name else factors + name
-                    },
-                    label = { Text("$emoji $name") },
+                    onClick  = { factors = if (selected) factors - name else factors + name },
+                    label    = { Text("$emoji $name") },
                 )
             }
         }
@@ -573,27 +548,17 @@ private fun MoodForm(
 
         Spacer(Modifier.height(24.dp))
 
-        fun buildMoodParams(isEnriched: Boolean) = CreateMoodEntryUseCase.Params(
-            score      = score,
-            energy     = energy,
-            emotions   = emotions.toList(),
-            factors    = factors.toList(),
-            note       = note.trim().ifBlank { null },
-            tags       = tags,
-            isEnriched = isEnriched,
-        )
-
         Button(
-            onClick = { onSubmit(buildMoodParams(isEnriched = true)) },
+            onClick = { onSubmit(buildParams(isEnriched = true)) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Save Check-in")
+            Text("Save Changes")
         }
 
         Spacer(Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = { onSubmit(buildMoodParams(isEnriched = false)) },
+            onClick = { onSubmit(buildParams(isEnriched = false)) },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -601,124 +566,16 @@ private fun MoodForm(
         ) {
             Text("Save — add more later")
         }
+
+        Spacer(Modifier.height(8.dp))
     }
 }
 
-// ---- Tag input with autocomplete -----------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun TagInputField(
-    selectedTags: List<String>,
-    availableTags: List<Tag>,
-    onTagsChanged: (List<String>) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var input    by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-
-    val trimmed = input.trim()
-    val suggestions = remember(trimmed, availableTags, selectedTags) {
-        if (trimmed.isEmpty()) emptyList()
-        else availableTags.filter {
-            it.name.contains(trimmed, ignoreCase = true) && it.name !in selectedTags
-        }.take(5)
-    }
-    val showCreate = trimmed.isNotEmpty() &&
-        availableTags.none { it.name.equals(trimmed, ignoreCase = true) } &&
-        trimmed !in selectedTags
-
-    expanded = suggestions.isNotEmpty() || showCreate
-
-    fun addTag(name: String) {
-        val tag = name.trim()
-        if (tag.isNotBlank() && tag !in selectedTags) {
-            onTagsChanged(selectedTags + tag)
-        }
-        input = ""
-        expanded = false
-    }
-
-    Column(modifier = modifier) {
-        Text(
-            text = "Tags",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(6.dp))
-
-        if (selectedTags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                selectedTags.forEach { tag ->
-                    InputChip(
-                        selected = false,
-                        onClick  = {},
-                        label    = { Text("#$tag") },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = { onTagsChanged(selectedTags - tag) },
-                                modifier = Modifier.size(18.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Remove $tag",
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
-                        },
-                    )
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-        }
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-        ) {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { raw ->
-                    when {
-                        raw.endsWith(",") -> addTag(raw.dropLast(1))
-                        else -> input = raw
-                    }
-                },
-                label = { Text(if (selectedTags.isEmpty()) "Add tags" else "Add another tag") },
-                placeholder = { Text("Type to search or create…") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { addTag(input) }),
-            )
-
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-            ) {
-                suggestions.forEach { tag ->
-                    DropdownMenuItem(
-                        text = { Text(tag.name) },
-                        onClick = { addTag(tag.name) },
-                    )
-                }
-                if (showCreate) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "+ Create \"$trimmed\"",
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        onClick = { addTag(trimmed) },
-                    )
-                }
-            }
-        }
-    }
+private fun DetailSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

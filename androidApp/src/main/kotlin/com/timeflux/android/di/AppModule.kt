@@ -9,5 +9,5 @@ import org.koin.dsl.module
  * Registered via [com.timeflux.android.TimeFluxApp] so it sits on top of the shared module.
  */
 val appModule = module {
-    viewModel { TimelineViewModel(get(), get(), get()) }
+    viewModel { TimelineViewModel(get(), get(), get(), get(), get()) }
 }
