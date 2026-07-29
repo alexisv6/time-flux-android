@@ -7,6 +7,9 @@ local.properties
 *.keystore
 *.jks
 
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
+
 # KMP iOS build artifacts
 iosApp/.build/
 iosApp/Pods/
