@@ -31,9 +31,19 @@ class ModulesViewModel(
         viewModelScope.launch { registry.setEnabled(type, enabled) }
     }
 
-    /** Wired to the UI in phase 5. */
     fun setHidden(type: ModuleType, hidden: Boolean) {
         viewModelScope.launch { registry.setHidden(type, hidden) }
+    }
+
+    /**
+     * Marks first run done, then invokes [onComplete]. The callback runs after the write so
+     * navigation can't outrun the flag and drop the user back into onboarding.
+     */
+    fun completeFirstRun(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            registry.completeFirstRun()
+            onComplete()
+        }
     }
 
     private companion object {

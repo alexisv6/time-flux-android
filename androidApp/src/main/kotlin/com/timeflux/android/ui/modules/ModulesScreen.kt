@@ -3,6 +3,7 @@ package com.timeflux.android.ui.modules
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -19,7 +20,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -38,34 +41,57 @@ import com.timeflux.module.LifeModule
 import com.timeflux.module.UPCOMING_MODULES
 import org.koin.androidx.compose.koinViewModel
 
+/** How the picker is being shown. The list is identical; only the framing differs (spec 001, D7). */
+enum class ModulesScreenMode { FIRST_RUN, SETTINGS }
+
 /**
  * The module picker. Lists the modules that are built today, plus a footer naming the ones still
  * to come — eight dead switches would make the screen feel broken (spec 001, decision D5).
  *
- * Phase 2 renders this read-only; Phase 3 binds the switches to ModuleRegistry state, and Phase 5
- * adds the hide-entries control to disabled rows.
+ * One composable serves both first run and settings: two screens showing the same list would
+ * drift apart. First run gets a welcome title and a "Start my timeline" action; settings gets a
+ * back arrow.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModulesScreen(
-    onBack: () -> Unit,
+    onDone: () -> Unit,
+    mode: ModulesScreenMode = ModulesScreenMode.SETTINGS,
     viewModel: ModulesViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val isFirstRun = mode == ModulesScreenMode.FIRST_RUN
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Modules") },
+                title = { Text(if (isFirstRun) "Welcome to Time Flux" else "Modules") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    // No way back during first run — there's no timeline behind it yet.
+                    if (!isFirstRun) {
+                        IconButton(onClick = onDone) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
+        },
+        bottomBar = {
+            if (isFirstRun && state.isLoaded) {
+                Surface(color = MaterialTheme.colorScheme.surface) {
+                    Button(
+                        onClick = { viewModel.completeFirstRun(onDone) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text("Start my timeline")
+                    }
+                }
+            }
         },
     ) { innerPadding ->
         LazyColumn(
@@ -75,8 +101,13 @@ fun ModulesScreen(
         ) {
             item {
                 Text(
-                    text = "Time Flux is built from modules. Turn on the parts of your life you " +
-                        "want on your timeline — you can change this any time.",
+                    text = if (isFirstRun) {
+                        "Time Flux is built from modules — the parts of your life you want on one " +
+                            "timeline. These are on to start with, and you can change them any time."
+                    } else {
+                        "Time Flux is built from modules. Turn on the parts of your life you " +
+                            "want on your timeline — you can change this any time."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp),

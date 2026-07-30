@@ -1,7 +1,7 @@
 # Plan 001 — Module registry and navigation
 
 **Spec:** `docs/specs/001-module-registry-and-navigation.md`
-**Status:** in progress — Phases 1–5 of 7 landed
+**Status:** in progress — Phases 1–6 of 7 landed; only docs (phase 7) remain
 **Created:** 2026-07-28
 **Revised:** 2026-07-28 — spec decisions closed; hide-entries and first-run phases added.
 
@@ -264,7 +264,7 @@ entry, so there was nothing to scroll.
 
 ---
 
-### Phase 6 — First-run mode
+### Phase 6 — First-run mode ✅ landed 2026-07-29
 
 **Goal:** a fresh install lands on the picker; everyone else lands on the timeline.
 
@@ -287,6 +287,16 @@ entry, so there was nothing to scroll.
   to the picker → kill and relaunch → straight to the timeline.
 
 **Done when:** first run and subsequent runs both behave as specified.
+
+**Outcome:** verified on device without clearing app data — `app.firstRunComplete` had never been
+written on that install, so a plain launch exercised first run for real. The picker showed with a
+"Welcome to Time Flux" title, no back arrow, both modules on and a pinned "Start my timeline"
+button; tapping it wrote the flag and landed on the timeline; system back then exited to the
+launcher rather than returning to onboarding; relaunch went straight to the timeline.
+
+`completeFirstRun` takes an `onComplete` callback invoked after the write rather than firing the
+write and navigating in parallel — otherwise navigation can outrun the flag and a killed app drops
+the user back into onboarding.
 
 ---
 
