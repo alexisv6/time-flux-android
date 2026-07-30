@@ -156,16 +156,20 @@ fun TimelineScreen(
             onDismiss         = { showAddSheet = false },
             onSubmitMilestone = viewModel::addMilestone,
             onSubmitMood      = viewModel::addMoodEntry,
+            enabledModules    = state.enabledModules,
+            // Dismiss first, or the sheet stays stacked over the Modules screen.
+            onOpenModules     = { showAddSheet = false; onOpenModules() },
             availableTags     = state.availableTags,
         )
     }
 
     if (showFilterSheet) {
         FilterBottomSheet(
-            filter        = state.filter,
-            availableTags = state.availableTags,
-            onApply       = { viewModel.setFilter(it) },
-            onDismiss     = { showFilterSheet = false },
+            filter         = state.filter,
+            availableTags  = state.availableTags,
+            enabledModules = state.enabledModules,
+            onApply        = { viewModel.setFilter(it) },
+            onDismiss      = { showFilterSheet = false },
         )
     }
 

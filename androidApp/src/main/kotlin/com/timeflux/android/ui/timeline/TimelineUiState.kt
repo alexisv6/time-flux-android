@@ -1,5 +1,6 @@
 package com.timeflux.android.ui.timeline
 
+import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
 import com.timeflux.domain.model.TimelineEntry
 
@@ -11,6 +12,8 @@ import com.timeflux.domain.model.TimelineEntry
  * [hasMore]       — false when the last page returned fewer items than PAGE_SIZE.
  * [userMessage]   — one-shot message for the Snackbar; clear with [TimelineViewModel.messageShown].
  * [availableTags] — all tags in the DB, used to populate autocomplete in entry forms.
+ * [enabledModules] — modules the user has switched on; drives which entry types can be created
+ *                    and filtered. Entries from disabled modules stay on the timeline (spec 001).
  */
 data class TimelineUiState(
     val entries: List<TimelineEntry> = emptyList(),
@@ -19,6 +22,7 @@ data class TimelineUiState(
     val hasMore: Boolean = true,
     val userMessage: String? = null,
     val availableTags: List<Tag> = emptyList(),
+    val enabledModules: Set<ModuleType> = emptySet(),
     val filter: TimelineFilter = TimelineFilter(),
     val selectedEntry: TimelineEntry? = null,
 )

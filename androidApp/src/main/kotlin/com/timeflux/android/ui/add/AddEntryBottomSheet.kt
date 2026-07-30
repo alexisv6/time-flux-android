@@ -63,6 +63,7 @@ import com.timeflux.android.ui.energyScoreEmoji
 import com.timeflux.android.ui.moodScoreEmoji
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
+import com.timeflux.module.AVAILABLE_MODULES
 import com.timeflux.module.milestone.CreateMilestoneUseCase
 import com.timeflux.module.milestone.MilestoneCategory
 import com.timeflux.module.milestone.MilestoneSignificance
@@ -74,6 +75,8 @@ fun AddEntryBottomSheet(
     onDismiss: () -> Unit,
     onSubmitMilestone: (CreateMilestoneUseCase.Params) -> Unit,
     onSubmitMood: (CreateMoodEntryUseCase.Params) -> Unit,
+    enabledModules: Set<ModuleType>,
+    onOpenModules: () -> Unit,
     availableTags: List<Tag> = emptyList(),
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -84,7 +87,11 @@ fun AddEntryBottomSheet(
         sheetState = sheetState,
     ) {
         when (val type = selectedType) {
-            null -> ModuleTypeSelector(onTypeSelected = { selectedType = it })
+            null -> ModuleTypeSelector(
+                enabledModules = enabledModules,
+                onTypeSelected = { selectedType = it },
+                onOpenModules  = onOpenModules,
+            )
 
             ModuleType.MILESTONE -> MilestoneForm(
                 availableTags = availableTags,
@@ -113,7 +120,14 @@ fun AddEntryBottomSheet(
 // ---- Step 1: module type selector ----------------------------------------------------------
 
 @Composable
-private fun ModuleTypeSelector(onTypeSelected: (ModuleType) -> Unit) {
+private fun ModuleTypeSelector(
+    enabledModules: Set<ModuleType>,
+    onTypeSelected: (ModuleType) -> Unit,
+    onOpenModules: () -> Unit,
+) {
+    // Priority order from the catalogue, not Set iteration order.
+    val types = AVAILABLE_MODULES.filter { it.type in enabledModules }.map { it.type }
+
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -125,12 +139,44 @@ private fun ModuleTypeSelector(onTypeSelected: (ModuleType) -> Unit) {
             modifier = Modifier.padding(vertical = 12.dp),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ModuleCard(ModuleType.MILESTONE, Modifier.weight(1f)) { onTypeSelected(ModuleType.MILESTONE) }
-            ModuleCard(ModuleType.MOOD,      Modifier.weight(1f)) { onTypeSelected(ModuleType.MOOD) }
+        if (types.isEmpty()) {
+            NoModulesEnabled(onOpenModules = onOpenModules)
+            return@Column
+        }
+
+        // Two per row, keeping the square cards; a trailing spacer preserves the width of a
+        // lone card on the last row.
+        types.chunked(2).forEach { rowTypes ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                rowTypes.forEach { type ->
+                    ModuleCard(type, Modifier.weight(1f)) { onTypeSelected(type) }
+                }
+                if (rowTypes.size == 1) Spacer(Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun NoModulesEnabled(onOpenModules: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+        Text(
+            text = "No modules are enabled",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Turn on at least one module and it will show up here as something you can add.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = onOpenModules, modifier = Modifier.fillMaxWidth()) {
+            Text("Open Modules")
         }
     }
 }

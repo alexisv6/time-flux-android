@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import com.timeflux.domain.model.Outcome
 import com.timeflux.domain.model.TimelineEntry
 import com.timeflux.domain.repository.TimelineRepository
+import com.timeflux.module.ModuleRegistry
 import com.timeflux.module.milestone.CreateMilestoneUseCase
 import com.timeflux.module.milestone.UpdateMilestoneUseCase
 import com.timeflux.module.mood.CreateMoodEntryUseCase
@@ -25,6 +26,7 @@ class TimelineViewModel(
     private val createMoodEntry: CreateMoodEntryUseCase,
     private val updateMilestone: UpdateMilestoneUseCase,
     private val updateMoodEntry: UpdateMoodEntryUseCase,
+    private val moduleRegistry: ModuleRegistry,
 ) : ViewModel() {
 
     private val log = Logger.withTag("TimelineVM")
@@ -42,6 +44,7 @@ class TimelineViewModel(
     init {
         loadInitialPage()
         loadAllTags()
+        observeEnabledModules()
     }
 
     // ---- Public actions ----------------------------------------------------------------
@@ -138,6 +141,27 @@ class TimelineViewModel(
     fun messageShown() = _state.update { it.copy(userMessage = null) }
 
     // ---- Private helpers ---------------------------------------------------------------
+
+    /**
+     * Mirrors the module registry into UI state. Also clears an active module filter when that
+     * module is disabled — otherwise the timeline stays filtered to entries the user can no longer
+     * reach a chip for.
+     */
+    private fun observeEnabledModules() {
+        viewModelScope.launch {
+            moduleRegistry.observeEnabled().collect { enabled ->
+                _state.update { current ->
+                    val filter = current.filter
+                    val cleared = if (filter.moduleType != null && filter.moduleType !in enabled) {
+                        filter.copy(moduleType = null)
+                    } else {
+                        filter
+                    }
+                    current.copy(enabledModules = enabled, filter = cleared)
+                }
+            }
+        }
+    }
 
     private fun loadAllTags() {
         viewModelScope.launch {

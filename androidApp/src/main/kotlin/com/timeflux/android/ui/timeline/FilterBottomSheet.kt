@@ -33,15 +33,20 @@ import com.timeflux.android.ui.defaultEmoji
 import com.timeflux.android.ui.displayName
 import com.timeflux.domain.model.ModuleType
 import com.timeflux.domain.model.Tag
+import com.timeflux.module.AVAILABLE_MODULES
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FilterBottomSheet(
     filter: TimelineFilter,
     availableTags: List<Tag>,
+    enabledModules: Set<ModuleType>,
     onApply: (TimelineFilter) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Priority order from the catalogue, not Set iteration order.
+    val filterableModules = AVAILABLE_MODULES.filter { it.type in enabledModules }.map { it.type }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Local draft state — applied only when the user taps Apply
@@ -83,7 +88,7 @@ fun FilterBottomSheet(
                     onClick  = { moduleType = null },
                     label    = { Text("All") },
                 )
-                listOf(ModuleType.MILESTONE, ModuleType.MOOD).forEach { type ->
+                filterableModules.forEach { type ->
                     FilterChip(
                         selected = moduleType == type,
                         onClick  = { moduleType = if (moduleType == type) null else type },

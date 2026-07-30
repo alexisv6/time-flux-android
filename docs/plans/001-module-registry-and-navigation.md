@@ -1,7 +1,7 @@
 # Plan 001 — Module registry and navigation
 
 **Spec:** `docs/specs/001-module-registry-and-navigation.md`
-**Status:** in progress — Phases 1–3 of 7 landed
+**Status:** in progress — Phases 1–4 of 7 landed
 **Created:** 2026-07-28
 **Revised:** 2026-07-28 — spec decisions closed; hide-entries and first-run phases added.
 
@@ -169,7 +169,7 @@ no rows until the registry's first emission instead.
 
 ---
 
-### Phase 4 — Enabled modules drive the add and filter sheets
+### Phase 4 — Enabled modules drive the add and filter sheets ✅ landed 2026-07-29
 
 **Goal:** disabling a module actually changes what the user can do.
 
@@ -196,6 +196,19 @@ no rows until the registry's first emission instead.
   → add sheet shows the empty state and its button opens Modules.
 
 **Done when:** every enable/disable acceptance criterion passes by hand.
+
+**Outcome:** verified on a Galaxy S24 Ultra — add sheet shows both cards with both modules on, only
+Milestone with Mood off, and the "No modules are enabled" state with a working *Open Modules*
+button when both are off; the filter sheet drops the Mood chip when Mood is off; and mood entries
+stay on the timeline throughout.
+
+**One criterion is implemented but unverified:** clearing an active module filter when that module
+is disabled. The check needs the app foregrounded through a nav round-trip and the device was in
+use, so it was abandoned rather than blind-tapped. To confirm: filter to Mood, disable Mood in
+Modules, return to the timeline — the Mood chip should be gone and all entries showing.
+
+Module lists in both sheets are derived from `AVAILABLE_MODULES`, not from `Set` iteration order,
+so cards and chips stay in the product's priority order as modules ship.
 
 ---
 
