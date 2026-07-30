@@ -139,6 +139,33 @@ WHERE deleted_at IS NULL
 ORDER BY created_at ASC, id ASC
 LIMIT :limit;
 
+-- Cursor-paginated scroll excluding hidden modules (backward — load older).
+--
+-- IMPORTANT: SQLite renders an empty collection as `NOT IN ()`, which is a syntax error at
+-- runtime, not compile time. The repository must call selectPageBefore instead whenever the
+-- exclusion set is empty. Do not "simplify" the two call sites into one.
+selectPageBeforeExcluding:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND module_type NOT IN :excluded
+  AND (created_at < :before_ts OR (created_at = :before_ts AND id < :before_id))
+ORDER BY created_at DESC, id DESC
+LIMIT :limit;
+
+-- Cursor-paginated scroll excluding hidden modules (forward — load newer). Same empty-collection
+-- caveat as selectPageBeforeExcluding.
+selectPageAfterExcluding:
+SELECT id, created_at, ends_at, module_type, title, note, media_uri,
+       location_name, is_pinned, payload, updated_at
+FROM timeline_entries
+WHERE deleted_at IS NULL
+  AND module_type NOT IN :excluded
+  AND (created_at > :after_ts OR (created_at = :after_ts AND id > :after_id))
+ORDER BY created_at ASC, id ASC
+LIMIT :limit;
+
 -- Filter by module type with cursor
 selectPageByModule:
 SELECT id, created_at, ends_at, module_type, title, note, media_uri,

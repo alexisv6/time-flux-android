@@ -14,6 +14,8 @@ import com.timeflux.domain.model.TimelineEntry
  * [availableTags] — all tags in the DB, used to populate autocomplete in entry forms.
  * [enabledModules] — modules the user has switched on; drives which entry types can be created
  *                    and filtered. Entries from disabled modules stay on the timeline (spec 001).
+ * [hiddenModules]  — disabled modules whose entries the user asked to hide. Excluded in the query,
+ *                    never post-filtered, so paging stays correct.
  */
 data class TimelineUiState(
     val entries: List<TimelineEntry> = emptyList(),
@@ -23,6 +25,7 @@ data class TimelineUiState(
     val userMessage: String? = null,
     val availableTags: List<Tag> = emptyList(),
     val enabledModules: Set<ModuleType> = emptySet(),
+    val hiddenModules: Set<ModuleType> = emptySet(),
     val filter: TimelineFilter = TimelineFilter(),
     val selectedEntry: TimelineEntry? = null,
 )

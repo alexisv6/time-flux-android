@@ -67,18 +67,31 @@ class TimelineRepositoryImpl(
 
     // ---- Paginated one-shot reads -------------------------------------------------------
 
+    // An empty exclusion set must use the plain query: SQLite renders `NOT IN ()` as a syntax
+    // error at runtime. See the comment on selectPageBeforeExcluding in TimeFlux.sq.
     override suspend fun getPageBefore(
         beforeTs: Long,
         beforeId: String,
         limit: Long,
+        excludedModules: Set<String>,
     ): Outcome<List<TimelineEntry>> = withContext(Dispatchers.IO) {
         runCatching {
-            q.selectPageBefore(
-                before_ts = beforeTs,
-                before_id = beforeId,
-                limit = limit,
-                mapper = ::mapListRow,
-            ).executeAsList()
+            if (excludedModules.isEmpty()) {
+                q.selectPageBefore(
+                    before_ts = beforeTs,
+                    before_id = beforeId,
+                    limit = limit,
+                    mapper = ::mapListRow,
+                ).executeAsList()
+            } else {
+                q.selectPageBeforeExcluding(
+                    excluded = excludedModules,
+                    before_ts = beforeTs,
+                    before_id = beforeId,
+                    limit = limit,
+                    mapper = ::mapListRow,
+                ).executeAsList()
+            }
         }.toOutcome()
     }
 
@@ -86,14 +99,25 @@ class TimelineRepositoryImpl(
         afterTs: Long,
         afterId: String,
         limit: Long,
+        excludedModules: Set<String>,
     ): Outcome<List<TimelineEntry>> = withContext(Dispatchers.IO) {
         runCatching {
-            q.selectPageAfter(
-                after_ts = afterTs,
-                after_id = afterId,
-                limit = limit,
-                mapper = ::mapListRow,
-            ).executeAsList()
+            if (excludedModules.isEmpty()) {
+                q.selectPageAfter(
+                    after_ts = afterTs,
+                    after_id = afterId,
+                    limit = limit,
+                    mapper = ::mapListRow,
+                ).executeAsList()
+            } else {
+                q.selectPageAfterExcluding(
+                    excluded = excludedModules,
+                    after_ts = afterTs,
+                    after_id = afterId,
+                    limit = limit,
+                    mapper = ::mapListRow,
+                ).executeAsList()
+            }
         }.toOutcome()
     }
 

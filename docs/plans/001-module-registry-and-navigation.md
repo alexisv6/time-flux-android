@@ -1,7 +1,7 @@
 # Plan 001 — Module registry and navigation
 
 **Spec:** `docs/specs/001-module-registry-and-navigation.md`
-**Status:** in progress — Phases 1–4 of 7 landed
+**Status:** in progress — Phases 1–5 of 7 landed
 **Created:** 2026-07-28
 **Revised:** 2026-07-28 — spec decisions closed; hide-entries and first-run phases added.
 
@@ -212,7 +212,7 @@ so cards and chips stay in the product's priority order as modules ship.
 
 ---
 
-### Phase 5 — Hide entries from disabled modules
+### Phase 5 — Hide entries from disabled modules ✅ landed 2026-07-29
 
 **Goal:** the escape hatch works, and it works in the query rather than over loaded pages.
 
@@ -247,6 +247,20 @@ so cards and chips stay in the product's priority order as modules ship.
   entries back → kill and relaunch to confirm persistence.
 
 **Done when:** every hiding acceptance criterion passes and paging is visibly unaffected.
+
+**Outcome:** 5 paging tests added (17 total, all passing). Verified on device: the hide control
+appears only on disabled rows, hiding empties the timeline of that module's entries, re-enabling
+clears the hide and brings them back, and hiding survives a cold start.
+
+Two things landed differently from the plan. The tests live in `androidUnitTest`, not `commonTest`
+— `JdbcSqliteDriver` is JVM-only and can't be imported from common code, even though the dependency
+is declared there. And `TimelineViewModel.init` no longer calls `loadInitialPage()` directly: the
+first page load is driven by the hidden-set's first emission, otherwise startup paints hidden
+entries and then removes them. Confirmed on device — a cold start with Mood hidden shows an empty
+timeline from the first frame.
+
+Paging with hidden entries spanning multiple pages is covered by tests only; the device has one
+entry, so there was nothing to scroll.
 
 ---
 

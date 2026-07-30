@@ -42,9 +42,11 @@ class TimelineViewModel(
     val entryAdded: SharedFlow<Unit> = _entryAdded.asSharedFlow()
 
     init {
-        loadInitialPage()
         loadAllTags()
         observeEnabledModules()
+        // Drives the first page load too, so the timeline is never painted with entries the user
+        // has hidden and then re-painted without them.
+        observeHiddenModules()
     }
 
     // ---- Public actions ----------------------------------------------------------------
@@ -68,6 +70,7 @@ class TimelineViewModel(
             when (val result = repository.getPageBefore(
                 beforeTs = last.createdAt.toEpochMilliseconds(),
                 beforeId = last.id,
+                excludedModules = excludedModuleIds(),
             )) {
                 is Outcome.Success -> _state.update { s ->
                     s.copy(
@@ -163,6 +166,28 @@ class TimelineViewModel(
         }
     }
 
+    /**
+     * Mirrors hidden modules into state and reloads when the set changes. The first emission always
+     * loads, so `init` doesn't need its own call.
+     */
+    private fun observeHiddenModules() {
+        viewModelScope.launch {
+            var isFirstEmission = true
+            moduleRegistry.observeHidden().collect { hidden ->
+                val changed = _state.value.hiddenModules != hidden
+                _state.update { it.copy(hiddenModules = hidden) }
+                if (isFirstEmission || changed) {
+                    isFirstEmission = false
+                    loadInitialPage()
+                }
+            }
+        }
+    }
+
+    /** `ModuleType.id` strings for the query layer. */
+    private fun excludedModuleIds(): Set<String> =
+        _state.value.hiddenModules.map { it.id }.toSet()
+
     private fun loadAllTags() {
         viewModelScope.launch {
             when (val result = repository.getAllTags()) {
@@ -179,6 +204,7 @@ class TimelineViewModel(
                 // Long.MAX_VALUE / empty string: selects all entries (every created_at is < MAX)
                 beforeTs = Long.MAX_VALUE,
                 beforeId = "",
+                excludedModules = excludedModuleIds(),
             )) {
                 is Outcome.Success -> _state.update {
                     it.copy(

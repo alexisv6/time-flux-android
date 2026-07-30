@@ -35,11 +35,18 @@ interface TimelineRepository {
 
     // ---- Paginated one-shot reads ----
 
-    /** Page of entries older than the cursor ([beforeTs] epoch-ms, [beforeId] ULID). */
+    /**
+     * Page of entries older than the cursor ([beforeTs] epoch-ms, [beforeId] ULID).
+     *
+     * [excludedModules] holds `ModuleType.id` strings whose entries the user has chosen to hide.
+     * Exclusion happens in the query, not over the returned page — filtering afterwards would let
+     * hidden entries consume page slots and break the cursor at scale.
+     */
     suspend fun getPageBefore(
         beforeTs: Long,
         beforeId: String,
         limit: Long = PAGE_SIZE,
+        excludedModules: Set<String> = emptySet(),
     ): Outcome<List<TimelineEntry>>
 
     /** Page of entries newer than the cursor ([afterTs] epoch-ms, [afterId] ULID). */
@@ -47,6 +54,7 @@ interface TimelineRepository {
         afterTs: Long,
         afterId: String,
         limit: Long = PAGE_SIZE,
+        excludedModules: Set<String> = emptySet(),
     ): Outcome<List<TimelineEntry>>
 
     /** Page filtered to a single module, older than the cursor. */

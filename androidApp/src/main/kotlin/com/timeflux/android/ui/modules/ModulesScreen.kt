@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,8 +90,9 @@ fun ModulesScreen(
                     ModuleRow(
                         module = module,
                         isEnabled = module.type in state.enabled,
+                        isHidden = module.type in state.hidden,
                         onEnabledChange = { viewModel.setEnabled(module.type, it) },
-                        interactive = true,
+                        onHiddenChange = { viewModel.setHidden(module.type, it) },
                     )
                 }
 
@@ -104,34 +106,53 @@ fun ModulesScreen(
 private fun ModuleRow(
     module: LifeModule,
     isEnabled: Boolean,
+    isHidden: Boolean,
     onEnabledChange: (Boolean) -> Unit,
-    interactive: Boolean,
+    onHiddenChange: (Boolean) -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = module.type.accentColor().copy(alpha = 0.10f),
         ),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(module.type.defaultEmoji(), style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(module.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = module.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(module.type.defaultEmoji(), style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(module.displayName, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = module.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = isEnabled, onCheckedChange = onEnabledChange)
             }
-            Spacer(Modifier.width(12.dp))
-            Switch(
-                checked = isEnabled,
-                onCheckedChange = onEnabledChange,
-                enabled = interactive,
-            )
+
+            // Only a disabled module can be hidden — "enabled but hidden" would let the user
+            // create entries that never appear (spec 001, decision D4).
+            if (!isEnabled) {
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Hide past entries",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = "They stay saved — turning the module back on brings them back.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(checked = isHidden, onCheckedChange = onHiddenChange)
+                }
+            }
         }
     }
 }
