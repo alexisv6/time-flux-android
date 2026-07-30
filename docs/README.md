@@ -29,7 +29,7 @@ Open questions being investigated before they're ready to spec — see
 
 | # | Feature | Spec | Plan | Status |
 |---|---|---|---|---|
-| 001 | Module registry + navigation | [spec](specs/001-module-registry-and-navigation.md) | [plan](plans/001-module-registry-and-navigation.md) | In progress — phases 1–6 of 7 |
+| 001 | Module registry + navigation | [spec](specs/001-module-registry-and-navigation.md) | [plan](plans/001-module-registry-and-navigation.md) | **Shipped** 2026-07-29 |
 
 ---
 

@@ -1,7 +1,7 @@
 # Plan 001 — Module registry and navigation
 
 **Spec:** `docs/specs/001-module-registry-and-navigation.md`
-**Status:** in progress — Phases 1–6 of 7 landed; only docs (phase 7) remain
+**Status:** done — all 7 phases landed 2026-07-29
 **Created:** 2026-07-28
 **Revised:** 2026-07-28 — spec decisions closed; hide-entries and first-run phases added.
 
@@ -300,7 +300,7 @@ the user back into onboarding.
 
 ---
 
-### Phase 7 — Documentation
+### Phase 7 — Documentation ✅ landed 2026-07-29
 
 **Goal:** the repo's context reflects reality again.
 
@@ -312,6 +312,13 @@ the user back into onboarding.
 - Spec and plan headers → `Status: shipped` / `done`.
 
 **Done when:** a fresh reader of `current-state.md` would not be surprised by the running app.
+
+**Outcome:** `current-state.md` rewritten — registry, picker, navigation, hiding and first run moved
+into "what runs today", with the test inventory added. Three gaps closed (dead `ALL_MODULES`, unused
+`multiplatform-settings`, no navigation dependency) and the filtering gap narrowed to tags and dates
+now that module exclusion is query-level. Three gaps added that this work exposed or left behind:
+hiding covers the timeline list only, `isEnriched` is written but never read, and `iosMain` has
+still never been compiled.
 
 ## Risks
 

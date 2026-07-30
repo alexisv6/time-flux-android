@@ -1,6 +1,6 @@
 # Spec 001 — Module registry and navigation
 
-**Status:** approved
+**Status:** shipped 2026-07-29
 **Created:** 2026-07-28
 **Decisions closed:** 2026-07-28
 **Plan:** `docs/plans/001-module-registry-and-navigation.md`
